@@ -55,7 +55,8 @@ remove_git_origin_remote() {
             read -p "Enter the URL of the new git origin remote: " git_origin_url
             git remote add origin $git_origin_url
         else
-            echo "Skipping git origin remote addition."
+            echo "Skipping git origin remote addition and deleting the .git directory..."
+            rm -rf .git
         fi
     else
         echo "Skipping git origin remote removal."
