@@ -1,0 +1,24 @@
+{
+  "name": "dotfiles",
+  "version": "0.0.0-alpha",
+  "description": "",
+  "main": "setup.js",
+  "type": "module",
+  "scripts": {
+    "setup": "node setup.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SoftwareBlair/dotfiles.git"
+  },
+  "author": "Brandon Blair",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SoftwareBlair/dotfiles/issues"
+  },
+  "homepage": "https://github.com/SoftwareBlair/dotfiles#readme",
+  "dependencies": {
+    "inquirer": "^9.2.12",
+    "rxjs": "^7.8.1"
+  }
+}
