@@ -24,5 +24,5 @@ export const runCommand = (command, args = []) => {
 
 export const caskInstall = (answers) => {
   const allAnswers = answers.join(' ');
-  runCommand(`brew install --cask ${allDevTools}`);
-}
+  runCommand(`brew install --cask ${allAnswers}`);
+};
