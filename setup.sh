@@ -1,20 +1,23 @@
 #!/bin/bash
 
+source .zsh/color-vars.zsh
+
 # Function to install Xcode Command Line Tools if they're not already installed
 install-xcode-command-line-tools() {
-    echo "Checking for Xcode Command Line Tools..."
+    echo -e "${Blue}Checking for Xcode Command Line Tools...${Color_Off}"
     if xcode-select -p &>/dev/null; then
-        echo "Xcode Command Line Tools are already installed."
+        echo -e "${Cyan}Xcode Command Line Tools are already installed.${Color_Off}"
         
         # Ask the user if they want to check for software updates
-        read -p "Do you want to check for software updates? (y/n): " answer
+        echo -e "${Green}Do you want to check for software updates? (y/n): ${Color_Off}"
+        read answer
         if [[ $answer = [Yy]* ]]; then
             softwareupdate -ia --verbose
         else
-            echo "Skipping software updates."
+            echo -e "${Yellow}Skipping software updates.${Color_Off}"
         fi
     else
-        echo "Xcode Command Line Tools are not installed. Installing now..."
+        echo -e "${Blue}Xcode Command Line Tools are not installed. Installing now...${Color_Off}"
         # Install Xcode Command Line Tools
         xcode-select --install
     fi
@@ -108,21 +111,31 @@ configure_git() {
 }
 
 # Main script execution starts here
-echo "Starting setup..."
+
+echo -e "${BrCyan} ___   _              _                     ___         _                            ${Off}"
+echo -e "${BrCyan}(  _\`\( )_           ( )_ _                (  _\`\\      ( )_                       ${Off}"
+echo -e "${BrCyan}| (_(_| ,_)  _ _ _ __| ,_(_) ___    __     | (_(_)_  __| ,_)_   _ _ _               ${Off}"
+echo -e "${BrCyan}\`\\__ \\| |  /'_\` ( '__| | | /' _ \`\/'_ \`\\   \`\\__ \\ /'__\`| | ( ) ( ( '_\`\\ ${Off}"
+echo -e "${BrCyan}( )_) | |_( (_| | |  | |_| | ( ) ( (_) |   ( )_) (  ___| |_| (_) | (_) ) _  _  _     ${Off}"
+echo -e "${BrCyan}\`\\____\`\\__\`\\__,_(_)  \`\\__(_(_) (_\`\\__  |   \`\\____\`\\____\`\\__\`\\___/| ,__/'(_)(_)(_)${Off}"
+echo -e "${BrCyan}                                 ( )_) |                         | |                 ${Off}"
+echo -e "${BrCyan}                                  \\___/'                         (_)                ${Off}"
+
+
 
 # Install Xcode Command Line Tools
 install-xcode-command-line-tools
 
 # Install Homebrew
-install_homebrew
+# install_homebrew
 
 # Remove the git origin remote
-remove_git_origin_remote
+# remove_git_origin_remote
 
 # Symlink dotfiles
-symlink_dotfiles
+# symlink_dotfiles
 
 # Configure git
-configure_git
+# configure_git
 
 echo "Setup complete!"
