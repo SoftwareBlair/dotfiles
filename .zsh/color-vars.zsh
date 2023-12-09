@@ -44,11 +44,11 @@ export UCyan='\033[4;36m'          # Cyan
 export UWhite='\033[4;37m'         # White
 
 # Background
-export On_Black='\033[40m'         # Black
-export On_Red='\033[41m'           # Red
-export On_Green='\033[42m'         # Green
-export On_Yellow='\033[43m'        # Yellow
-export On_Blue='\033[44m'          # Blue
-export On_Purple='\033[45m'        # Purple
-export On_Cyan='\033[46m'          # Cyan
-export On_White='\033[47m'         # White
+export BackBlack='\033[40m'         # Black
+export BackRed='\033[41m'           # Red
+export BackGreen='\033[42m'         # Green
+export BackYellow='\033[43m'        # Yellow
+export BackBlue='\033[44m'          # Blue
+export BackPurple='\033[45m'        # Purple
+export BackCyan='\033[46m'          # Cyan
+export BackWhite='\033[47m'         # White
