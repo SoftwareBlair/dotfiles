@@ -5,7 +5,6 @@ source .zsh/color-vars.zsh
 # Function to install Xcode Command Line Tools if they're not already installed
 install-xcode-command-line-tools() {
     echo -e "${BackBlue}Checking for Xcode Command Line Tools...${Off}"
-    echo -e "\n"
     if xcode-select -p &>/dev/null; then
         echo -e "${Cyan}Xcode Command Line Tools are already installed.${Off}"
         
@@ -16,7 +15,6 @@ install-xcode-command-line-tools() {
             softwareupdate -ia --verbose
         else
             echo -e "${Yellow}Skipping software updates.${Off}"
-            echo -e "========================================"
         fi
     else
         echo -e "${Blue}Xcode Command Line Tools are not installed. Installing now...${Off}"
@@ -29,7 +27,6 @@ install-xcode-command-line-tools() {
 install_homebrew() {
     echo -e "\n"
     echo -e "${BackBlue}Checking for Homebrew...${Off}"
-    echo -e "\n"
     if command -v brew &>/dev/null; then
         echo -e "${Cyan}Homebrew is already installed.${Off}"
 
@@ -42,7 +39,6 @@ install_homebrew() {
             brew upgrade
         else
             echo -e "${Yellow}Skipping Homebrew update.${Off}"
-            echo -e "========================================"
         fi
     else
         echo -e "${Blue}Homebrew is not installed. Installing now...${Off}"
@@ -54,10 +50,9 @@ install_homebrew() {
 # Function to remove the git origin remote
 remove_git_origin_remote() {
     echo -e "\n"
-    echo -e "${BackCyan}Removing the git origin remote is recommended so that you can use this repo as a template for your own dotfiles.${Off}"
-    echo -e "****************************************"
-    echo -e "\n"
-    echo -e "${Red}Do you want to remove the git origin remote? (y/n): ${Off}"
+    echo -e "${BackBlue}Git Origin Remote${Off}"
+    echo -e "${Red}Removing the git origin remote is recommended so that you can use this repo as a template for your own dotfiles.${Off}"
+    echo -e "${Purple}Do you want to remove the git origin remote? (y/n): ${Off}"
     read remove_git_origin
     if [[ $remove_git_origin = [Yy]* ]]; then
         echo -e "${Blue}Removing the git origin remote...${Off}"
@@ -71,41 +66,19 @@ remove_git_origin_remote() {
             read git_origin_url
             git remote add origin $git_origin_url
         else
-            echo -e "${Red}Skipping git origin remote addition and deleting the .git directory...${Off}"
+            echo -e "${Yellow}Skipping git origin remote addition and deleting the .git directory...${Off}"
             rm -rf .git
         fi
     else
         echo -e "${Yellow}Skipping git origin remote removal.${Off}"
-        echo -e "========================================"
-    fi
-}
-
-# Find where dotfiles repo was cloned or downloaded
-DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-
-# Function to symlink dotfiles
-symlink_dotfiles() {
-    echo -e "\n"
-    echo -e "${BackPurple}Symlinking dotfiles is recommended so that you can easily update them.${Off}"
-    echo -e "****************************************"
-    echo -e "\n"
-
-    echo -e "${Purple}Do you want to symlink dotfiles? (y/n): ${Off}"
-    read symlink
-    if [[ $symlink = [Yy]* ]]; then
-        echo -e "${Blue}Symlinking dotfiles...${Off}"
-        ln -s $DOTFILES_DIR/.zshrc ~/.zshrc
-        ln -s $DOTFILES_DIR/.gitconfig ~/.gitconfig
-    else
-        echo -e "${Yellow}Skipping dotfile symlinking.${Off}"
-        echo -e "========================================"
     fi
 }
 
 # Function to configure git
 configure_git() {
     echo -e "\n"
-    echo -e "${Red}Do you want to set common git config values? (y/n): ${Off}"
+    echo -e "${BackBlue}Git Configuration${Off}"
+    echo -e "${Purple}Do you want to set common git config values? (y/n): ${Off}"
     read git_config
     if [[ $git_config = [Yy]* ]]; then
         read -p "Enter your name: " git_name
@@ -121,7 +94,11 @@ configure_git() {
         git config --global init.defaultBranch main
 
         if [[ $git_editor = [Yy]* ]]; then
-            git config --global core.editor "code --wait"
+            if command -v code &>/dev/null; then
+                git config --global core.editor "code --wait"
+            else
+                echo -e "${Red}VS Code is not installed.${Off}"
+            fi
         fi
 
         if [[ $git_rebase = [Yy]* ]]; then
@@ -132,35 +109,61 @@ configure_git() {
     fi
 }
 
+# Find where dotfiles repo was cloned or downloaded
+DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+# Function to symlink dotfiles
+symlink_dotfiles() {
+    echo -e "\n"
+    echo -e "${BackBlue}Symlink Dotfile${Off}"
+    echo -e "${Red}Symlinking dotfiles is recommended so that you can easily update them.${Off}"
+
+    echo -e "${Purple}Do you want to symlink dotfiles? (y/n): ${Off}"
+    read symlink
+    if [[ $symlink = [Yy]* ]]; then
+        echo -e "${Blue}Symlinking dotfiles...${Off}"
+        ln -s $DOTFILES_DIR/.zshrc ~/.zshrc
+        ln -s $DOTFILES_DIR/.gitconfig ~/.gitconfig
+    else
+        echo -e "${Yellow}Skipping dotfile symlinking.${Off}"
+    fi
+}
+
 # Main script execution starts here
 
-echo -e "${BrCyan} ___   _              _                     ___         _                            ${Off}"
-echo -e "${BrCyan}(  _\`\( )_           ( )_ _                (  _\`\\      ( )_                       ${Off}"
-echo -e "${BrCyan}| (_(_| ,_)  _ _ _ __| ,_(_) ___    __     | (_(_)_  __| ,_)_   _ _ _               ${Off}"
-echo -e "${BrCyan}\`\\__ \\| |  /'_\` ( '__| | | /' _ \`\/'_ \`\\   \`\\__ \\ /'__\`| | ( ) ( ( '_\`\\ ${Off}"
-echo -e "${BrCyan}( )_) | |_( (_| | |  | |_| | ( ) ( (_) |   ( )_) (  ___| |_| (_) | (_) ) _  _  _     ${Off}"
-echo -e "${BrCyan}\`\\____\`\\__\`\\__,_(_)  \`\\__(_(_) (_\`\\__  |   \`\\____\`\\____\`\\__\`\\___/| ,__/'(_)(_)(_)${Off}"
-echo -e "${BrCyan}                                 ( )_) |                         | |                 ${Off}"
-echo -e "${BrCyan}                                  \\___/'                         (_)                ${Off}"
-echo -e "\n"
+# Run a single command with the -c flag
+if [[ $1 = "-c" ]]; then
+    $2
+    echo -e "\n"
+    echo -e "${BackCyan}Command complete!${Off}"
+    echo -e "\n"
+else
+    echo -e "${BrCyan} ___   _              _                     ___         _                            ${Off}"
+    echo -e "${BrCyan}(  _\`\( )_           ( )_ _                (  _\`\\      ( )_                       ${Off}"
+    echo -e "${BrCyan}| (_(_| ,_)  _ _ _ __| ,_(_) ___    __     | (_(_)_  __| ,_)_   _ _ _               ${Off}"
+    echo -e "${BrCyan}\`\\__ \\| |  /'_\` ( '__| | | /' _ \`\/'_ \`\\   \`\\__ \\ /'__\`| | ( ) ( ( '_\`\\ ${Off}"
+    echo -e "${BrCyan}( )_) | |_( (_| | |  | |_| | ( ) ( (_) |   ( )_) (  ___| |_| (_) | (_) ) _  _  _     ${Off}"
+    echo -e "${BrCyan}\`\\____\`\\__\`\\__,_(_)  \`\\__(_(_) (_\`\\__  |   \`\\____\`\\____\`\\__\`\\___/| ,__/'(_)(_)(_)${Off}"
+    echo -e "${BrCyan}                                 ( )_) |                         | |                 ${Off}"
+    echo -e "${BrCyan}                                  \\___/'                         (_)                ${Off}"
+    echo -e "\n"
 
+    # Install Xcode Command Line Tools
+    install-xcode-command-line-tools
 
-# Install Xcode Command Line Tools
-install-xcode-command-line-tools
+    # Install Homebrew
+    install_homebrew
 
-# Install Homebrew
-install_homebrew
+    # Remove the git origin remote
+    remove_git_origin_remote
 
-# Remove the git origin remote
-remove_git_origin_remote
+    # Configure git
+    configure_git
 
-# Symlink dotfiles
-symlink_dotfiles
+    # Symlink dotfiles
+    symlink_dotfiles
 
-# Configure git
-configure_git
-
-echo -e "\n"
-echo -e "========================================"
-echo -e "${BackPurple}Setup complete!${Off}"
-echo -e "========================================"
+    echo -e "\n"
+    echo -e "${BackCyan}Setup complete!${Off}"
+    echo -e "\n"
+fi
