@@ -3,7 +3,7 @@
 source .zsh/color-vars.zsh
 
 # Function to install Xcode Command Line Tools if they're not already installed
-install-xcode-command-line-tools() {
+install_xcode_command_line_tools() {
     echo -e "${BackBlue}Checking for Xcode Command Line Tools...${Off}"
     if xcode-select -p &>/dev/null; then
         echo -e "${Cyan}Xcode Command Line Tools are already installed.${Off}"
@@ -149,7 +149,7 @@ else
     echo -e "\n"
 
     # Install Xcode Command Line Tools
-    install-xcode-command-line-tools
+    install_xcode_command_line_tools
 
     # Install Homebrew
     install_homebrew
