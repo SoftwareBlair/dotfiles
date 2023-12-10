@@ -2,6 +2,15 @@
 
 source .zsh/color-vars.zsh
 
+DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+# If dotfiles are not in the root directory, move them there
+if [[ $DOTFILES_DIR != $HOME/dotfiles ]]; then
+    echo -e "${BackBlue}Moving dotfiles to home directory...${Off}"
+    mv $DOTFILES_DIR $HOME
+    DOTFILES_DIR=$HOME/dotfiles
+fi
+
 install_xcode_command_line_tools() {
     echo -e "${BackBlue}Checking for Xcode Command Line Tools...${Off}"
     if xcode-select -p &>/dev/null; then
@@ -132,8 +141,6 @@ configure_git() {
         echo -e "${Yellow}Skipping git config.${Off}"
     fi
 }
-
-DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 symlink_dotfiles() {
     echo -e "\n"
