@@ -2,13 +2,11 @@
 
 source .zsh/color-vars.zsh
 
-# Function to install Xcode Command Line Tools if they're not already installed
 install_xcode_command_line_tools() {
     echo -e "${BackBlue}Checking for Xcode Command Line Tools...${Off}"
     if xcode-select -p &>/dev/null; then
         echo -e "${Cyan}Xcode Command Line Tools are already installed.${Off}"
         
-        # Ask the user if they want to check for software updates
         echo -e "${Purple}Do you want to check for software updates? (y/n): ${Off}"
         read answer
         if [[ $answer = [Yy]* ]]; then
@@ -18,19 +16,16 @@ install_xcode_command_line_tools() {
         fi
     else
         echo -e "${Blue}Xcode Command Line Tools are not installed. Installing now...${Off}"
-        # Install Xcode Command Line Tools
         xcode-select --install
     fi
 }
 
-# Function to install Homebrew if it's not already installed
 install_homebrew() {
     echo -e "\n"
     echo -e "${BackBlue}Checking for Homebrew...${Off}"
     if command -v brew &>/dev/null; then
         echo -e "${Cyan}Homebrew is already installed.${Off}"
 
-        # Ask the user if they want to update Homebrew
         echo -e "${Purple}Do you want to update Homebrew? (y/n): ${Off}"
         read update_brew
         if [[ $update_brew = [Yy]* ]]; then
@@ -42,12 +37,45 @@ install_homebrew() {
         fi
     else
         echo -e "${Blue}Homebrew is not installed. Installing now...${Off}"
-        # Install Homebrew
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
 }
 
-# Function to remove the git origin remote
+install_nvm() {
+    echo -e "\n"
+    echo -e "${BackBlue}Checking for NVM...${Off}"
+
+    source $(brew --prefix nvm)/nvm.sh
+    if type nvm &>/dev/null; then
+        echo -e "${Cyan}NVM is already installed.${Off}"
+
+        echo -e "${Purple}Do you want to update NVM? (y/n): ${Off}"
+        read update_nvm
+        if [[ $update_nvm = [Yy]* ]]; then
+            echo -e "${Blue}Updating NVM...${Off}"
+            brew upgrade nvm
+        else
+            echo -e "${Yellow}Skipping NVM update.${Off}"
+        fi
+    else
+        echo -e "${Blue}NVM is not installed. Installing now...${Off}"
+        brew install nvm
+        source $(brew --prefix nvm)/nvm.sh
+
+        if [ ! -d ~/.nvm ]; then
+            echo -e "${Blue}Creating .nvm directory...${Off}"
+            mkdir ~/.nvm
+        fi
+
+        echo -e "${Blue}Installing Node...${Off}"
+        nvm install --lts
+
+        echo -e "${Blue}Linking NVM...${Off}"
+        ln -s $(brew --prefix nvm)/nvm.sh ~/.nvm/nvm.sh
+        ln -s $(brew --prefix nvm)/nvm-exec ~/.nvm/nvm-exec
+    fi
+}
+
 remove_git_origin_remote() {
     echo -e "\n"
     echo -e "${BackBlue}Git Origin Remote${Off}"
@@ -58,7 +86,6 @@ remove_git_origin_remote() {
         echo -e "${Blue}Removing the git origin remote...${Off}"
         git remote remove origin
 
-        # Ask the user if they want to add a new git origin remote
         echo -e "${Green}Do you want to add a new git origin remote? (y/n): ${Off}"
         read add_git_origin
         if [[ $add_git_origin = [Yy]* ]]; then
@@ -74,7 +101,6 @@ remove_git_origin_remote() {
     fi
 }
 
-# Function to configure git
 configure_git() {
     echo -e "\n"
     echo -e "${BackBlue}Git Configuration${Off}"
@@ -109,10 +135,8 @@ configure_git() {
     fi
 }
 
-# Find where dotfiles repo was cloned or downloaded
 DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-# Function to symlink dotfiles
 symlink_dotfiles() {
     echo -e "\n"
     echo -e "${BackBlue}Symlink Dotfile${Off}"
@@ -131,7 +155,7 @@ symlink_dotfiles() {
 
 # Main script execution starts here
 
-# Run a single command with the -c flag
+# Run a single command with the -c flag ./setup.sh -c [command]
 if [[ $1 = "-c" ]]; then
     $2
     echo -e "\n"
@@ -148,19 +172,12 @@ else
     echo -e "${BrCyan}                                  \\___/'                         (_)                ${Off}"
     echo -e "\n"
 
-    # Install Xcode Command Line Tools
     install_xcode_command_line_tools
-
-    # Install Homebrew
     install_homebrew
-
-    # Remove the git origin remote
+    install_nvm
+    # link_nvm
     remove_git_origin_remote
-
-    # Configure git
     configure_git
-
-    # Symlink dotfiles
     symlink_dotfiles
 
     echo -e "\n"

@@ -1,4 +1,4 @@
 # #!/bin/bash
 
-[[ -f ~/.zsh/aliases.zsh ]] && source ~/.zsh/aliases.zsh
-[[ -f ~/.zsh/nvm.zsh ]] && source ~/.zsh/nvm.zsh
+[[ -f ~/dotfiles/.zsh/aliases.zsh ]] && source ~/dotfiles/.zsh/aliases.zsh
+[[ -f ~/dotfiles/.zsh/nvm.zsh ]] && source ~/dotfiles/.zsh/nvm.zsh
