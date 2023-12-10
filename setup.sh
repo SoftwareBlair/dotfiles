@@ -4,11 +4,23 @@ source .zsh/color-vars.zsh
 
 DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-if [[ $DOTFILES_DIR != $HOME/dotfiles ]]; then
-    echo -e "${BackBlue}Moving dotfiles to home directory...${Off}"
-    mv $DOTFILES_DIR $HOME
-    DOTFILES_DIR=$HOME/dotfiles
-fi
+move_dotfiles() {
+    echo -e "${BackBlue}Moving dotfiles to root...${Off}"
+    echo -e "${Red}Moving dotfiles to root is recommended so that you can easily update them.${Off}"
+
+    echo -e "${Purple}Do you want to move dotfiles to root? (y/n): ${Off}"
+    read move_dotfiles
+    if [[ $move_dotfiles = [Yy]* ]]; then
+        if [[ $DOTFILES_DIR != $HOME/dotfiles ]]; then
+            mv $DOTFILES_DIR $HOME
+            DOTFILES_DIR=$HOME/dotfiles
+        else
+            echo -e "${Yellow}Dotfiles are already in home directory.${Off}"
+        fi
+    else
+        echo -e "${Yellow}Skipping dotfile move.${Off}"
+    fi
+}
 
 install_xcode_command_line_tools() {
     echo -e "${BackBlue}Checking for Xcode Command Line Tools...${Off}"
@@ -88,6 +100,7 @@ remove_git_origin_remote() {
     echo -e "\n"
     echo -e "${BackBlue}Git Origin Remote${Off}"
     echo -e "${Red}Removing the git origin remote is recommended so that you can use this repo as a template for your own dotfiles.${Off}"
+
     echo -e "${Purple}Do you want to remove the git origin remote? (y/n): ${Off}"
     read remove_git_origin
     if [[ $remove_git_origin = [Yy]* ]]; then
@@ -176,6 +189,7 @@ else
     echo -e "${BrCyan}                                  \\___/'                         (_)                ${Off}"
     echo -e "\n"
 
+    move_dotfiles
     install_xcode_command_line_tools
     install_homebrew
     install_nvm

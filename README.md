@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Welcome to my Mac dotfiles repository! This repository contains my personal dotfiles tailored for zsh and a setup.sh script to automate the setup process of a new macOS system or update an existing one with my preferred configuration.
+This repository contains my personal dotfiles tailored for zsh and a setup.sh script to automate the setup process of a new macOS system or update an existing one with my default configuration.
 
 ## Installation
 
@@ -52,6 +52,7 @@ To run a specific command, use the -c flag followed by the command name. Here's 
 
 ### Available Commands
 List the commands available for individual execution. For instance:
+- `move_dotfiles`
 - `install_xcode_command_line_tools`
 - `install_homebrew`
 - `remove_git_origin_remote`
