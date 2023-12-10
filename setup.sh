@@ -109,14 +109,12 @@ configure_git() {
     if [[ $git_config = [Yy]* ]]; then
         read -p "Enter your name: " git_name
         read -p "Enter your email: " git_email
-        read -p "Enter your GitHub username: " git_username
         read -p "Set VS Code as your preffered editor? (y/m): " git_editor
         read -p "Set rebasing as default merge strategy? (y/n): " git_rebase
 
         echo "Setting git config values..."
         git config --global user.name "$git_name"
         git config --global user.email "$git_email"
-        git config --global github.user "$git_username"
         git config --global init.defaultBranch main
 
         if [[ $git_editor = [Yy]* ]]; then
@@ -175,7 +173,6 @@ else
     install_xcode_command_line_tools
     install_homebrew
     install_nvm
-    # link_nvm
     remove_git_origin_remote
     configure_git
     symlink_dotfiles
