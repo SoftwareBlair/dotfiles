@@ -4,7 +4,6 @@ source .zsh/color-vars.zsh
 
 DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-# If dotfiles are not in the root directory, move them there
 if [[ $DOTFILES_DIR != $HOME/dotfiles ]]; then
     echo -e "${BackBlue}Moving dotfiles to home directory...${Off}"
     mv $DOTFILES_DIR $HOME
