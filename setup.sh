@@ -128,6 +128,12 @@ configure_git() {
     echo -e "${Purple}Do you want to set common git config values? (y/n): ${Off}"
     read git_config
     if [[ $git_config = [Yy]* ]]; then
+            if [ -f ~/.gitconfig ]; then
+                echo -e "${Cyan}Git config already exists.${Off}"
+            else
+                echo -e "${Blue}Creating git config...${Off}"
+                touch ~/.gitconfig
+            fi
         read -p "Enter your name: " git_name
         read -p "Enter your email: " git_email
         read -p "Set VS Code as your preffered editor? (y/m): " git_editor
