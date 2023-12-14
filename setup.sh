@@ -122,6 +122,22 @@ remove_git_origin_remote() {
     fi
 }
 
+symlink_dotfiles() {
+    echo -e "\n"
+    echo -e "${BackBlue}Symlink Dotfile${Off}"
+    echo -e "${Red}Symlinking dotfiles is recommended so that you can easily update them.${Off}"
+
+    echo -e "${Purple}Do you want to symlink dotfiles? (y/n): ${Off}"
+    read symlink
+    if [[ $symlink = [Yy]* ]]; then
+        echo -e "${Blue}Symlinking dotfiles...${Off}"
+        ln -s $DOTFILES_DIR/.zshrc ~/.zshrc
+        ln -s $DOTFILES_DIR/.gitconfig ~/.gitconfig
+    else
+        echo -e "${Yellow}Skipping dotfile symlinking.${Off}"
+    fi
+}
+
 configure_git() {
     echo -e "\n"
     echo -e "${BackBlue}Git Configuration${Off}"
@@ -149,6 +165,15 @@ configure_git() {
                 git config --global core.editor "code --wait"
             else
                 echo -e "${Red}VS Code is not installed.${Off}"
+                echo -e "${Purple}Do you want to install VS Code? (y/n): ${Off}"
+                read install_vscode
+                if [[ $install_vscode = [Yy]* ]]; then
+                    echo -e "${Blue}Installing VS Code...${Off}"
+                    brew install --cask visual-studio-code
+                    git config --global core.editor "code --wait"
+                else
+                    echo -e "${Yellow}Skipping VS Code installation.${Off}"
+                fi
             fi
         fi
 
@@ -157,22 +182,6 @@ configure_git() {
         fi
     else
         echo -e "${Yellow}Skipping git config.${Off}"
-    fi
-}
-
-symlink_dotfiles() {
-    echo -e "\n"
-    echo -e "${BackBlue}Symlink Dotfile${Off}"
-    echo -e "${Red}Symlinking dotfiles is recommended so that you can easily update them.${Off}"
-
-    echo -e "${Purple}Do you want to symlink dotfiles? (y/n): ${Off}"
-    read symlink
-    if [[ $symlink = [Yy]* ]]; then
-        echo -e "${Blue}Symlinking dotfiles...${Off}"
-        ln -s $DOTFILES_DIR/.zshrc ~/.zshrc
-        ln -s $DOTFILES_DIR/.gitconfig ~/.gitconfig
-    else
-        echo -e "${Yellow}Skipping dotfile symlinking.${Off}"
     fi
 }
 
@@ -200,8 +209,8 @@ else
     install_homebrew
     install_nvm
     remove_git_origin_remote
-    configure_git
     symlink_dotfiles
+    configure_git
 
     echo -e "\n"
     echo -e "${BackCyan}Setup complete!${Off}"
