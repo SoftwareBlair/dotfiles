@@ -149,6 +149,15 @@ configure_git() {
                 git config --global core.editor "code --wait"
             else
                 echo -e "${Red}VS Code is not installed.${Off}"
+                echo -e "${Purple}Do you want to install VS Code? (y/n): ${Off}"
+                read install_vscode
+                if [[ $install_vscode = [Yy]* ]]; then
+                    echo -e "${Blue}Installing VS Code...${Off}"
+                    brew install --cask visual-studio-code
+                    git config --global core.editor "code --wait"
+                else
+                    echo -e "${Yellow}Skipping VS Code installation.${Off}"
+                fi
             fi
         fi
 
