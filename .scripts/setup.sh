@@ -3,17 +3,6 @@
 source ./helpers.sh
 source ../.zsh/colors.zsh
 
-move_dotfiles() {
-    echo -e "${BackCyan}Moving dotfiles to root...${Off}"
-
-    if [[ $DOTFILES_DIR != $HOME/dotfiles ]]; then
-        mv $DOTFILES_DIR $HOME
-        DOTFILES_DIR=$HOME/dotfiles
-    else
-        echo -e "${Yellow}Dotfiles are already in home directory.${Off}"
-    fi
-}
-
 install_xcode_command_line_tools() {
     echo -e "${BackCyan}Checking for Xcode Command Line Tools...${Off}"
     if xcode-select -p &>/dev/null; then
@@ -30,10 +19,11 @@ install_xcode_command_line_tools() {
         echo -e "${Blue}Xcode Command Line Tools are not installed. Installing now...${Off}"
         sudo xcode-select --install
     fi
+
+    echo -e "\n"
 }
 
 install_homebrew() {
-    echo -e "\n"
     echo -e "${BackCyan}Checking for Homebrew...${Off}"
     if command -v brew &>/dev/null; then
         echo -e "${Cyan}Homebrew is already installed.${Off}"
@@ -54,10 +44,11 @@ install_homebrew() {
         (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> ~/.zprofile
         eval "$(/opt/homebrew/bin/brew shellenv)"
     fi
+
+    echo -e "\n"
 }
 
 configure_git() {
-    echo -e "\n"
     echo -e "${BackCyan}Git Configuration${Off}"
     echo -e "${Purple}Do you want to set common git config values? (y/n): ${Off}"
     read git_config
@@ -116,30 +107,39 @@ configure_git() {
     else
         echo -e "${Yellow}Skipping git config.${Off}"
     fi
+
+    echo -e "\n"
 }
 
 symlink_dotfiles() {
-    echo -e "\n"
     echo -e "${BackCyan}Symlink Dotfile${Off}"
-    echo -e "${Red}Symlinking dotfiles is recommended so that you can easily update them.${Off}"
+    echo -e "${Blue}Symlinking dotfiles...${Off}"
 
-    echo -e "${Purple}Do you want to symlink dotfiles? (y/n): ${Off}"
-    read symlink
-    if [[ $symlink = [Yy]* ]]; then
-        echo -e "${Blue}Symlinking dotfiles...${Off}"
-        symlink ".zshrc"
-        symlink ".config"
-        symlink ".warp"
+    if [[ -L $HOME/.zshrc ]]; then
+        echo -e "${Cyan}.zshrc is already symlinked.${Off}"
     else
-        echo -e "${Yellow}Skipping dotfile symlinking.${Off}"
+        symlink_dotfile ".zshrc"
     fi
+
+    if [[ -L $HOME/.config ]]; then
+        echo -e "${Cyan}.config is already symlinked.${Off}"
+    else
+        symlink_dotfile ".config"
+    fi
+
+    if [[ -L $HOME/.warp ]]; then
+        echo -e "${Cyan}.warp is already symlinked.${Off}"
+    else
+        symlink_dotfile ".warp"
+    fi
+
+    echo -e "\n"
 }
 
 install_nvm() {
-    echo -e "\n"
     echo -e "${BackCyan}Checking for NVM...${Off}"
 
-    if type nvm &>/dev/null; then
+    if command -v nvm &>/dev/null; then
         echo -e "${Cyan}NVM is already installed.${Off}"
 
         echo -e "${Purple}Do you want to update NVM? (y/n): ${Off}"
@@ -167,7 +167,7 @@ install_nvm() {
     fi
 }
 
-# Main script execution starts here
+# Main script execution
 
 # Run a single command with the -c flag ./setup.sh -c [command]
 if [[ $1 = "-c" ]]; then
@@ -188,7 +188,15 @@ else
     echo -e "${BrCyan}                                  \\___/'                         (_)                ${Off}"
     echo -e "\n"
 
-    move_dotfiles
+    # Check if dotfiles are already in home directory if not, tell user to move them before continuing and exit script
+    if [[ $DOTFILES_DIR != $HOME/dotfiles ]]; then
+        echo -e "${Red}Dotfiles are not in home directory.${Off}"
+        echo -e "${Purple}Please run ./setup.sh -c move_dotfiles before continuing${Off}"
+        exit 1
+    else
+        echo -e "${Cyan}Dotfiles are already in home directory.${Off}"
+    fi
+
     install_xcode_command_line_tools
     install_homebrew
     configure_git

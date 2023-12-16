@@ -3,6 +3,17 @@
 export DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null 2>&1 && pwd )"
 source ../.zsh/colors.zsh
 
+move_dotfiles() {
+    echo -e "${BackCyan}Moving dotfiles to root...${Off}"
+
+    if [[ $DOTFILES_DIR != $HOME/dotfiles ]]; then
+        mv $DOTFILES_DIR $HOME
+        DOTFILES_DIR=$HOME/dotfiles
+    else
+        echo -e "${Yellow}Dotfiles are already in home directory.${Off}"
+    fi
+}
+
 remove_git_origin_remote() {
     echo -e "\n"
     echo -e "${BackCyan}Git Origin Remote${Off}"
@@ -29,7 +40,7 @@ remove_git_origin_remote() {
     fi
 }
 
-symlink() {
+symlink_dotfile() {
     echo -e "${BrMagenta}Linking $1...${Off}"
     ln -sf $DOTFILES_DIR/$1 $HOME/$1
 }
@@ -50,6 +61,7 @@ revert_setup() {
     echo -e "\n"
     echo -e "${BackCyan}Revert Setup${Off}"
     echo -e "${Red}Reverting setup is recommended if you want to undo the changes made by setup.sh.${Off}"
+    echo -e "${Red}This will uninstall NVM, unlink dotfiles, uninstall Homebrew, and remove the .nvm and .npm directories. You will need to manually delete the .gitconfig file and Xcode Command Line Tools.${Off}"
 
     echo -e "${Purple}Do you want to revert setup? (y/n): ${Off}"
     read revert_setup
@@ -59,9 +71,7 @@ revert_setup() {
         unlink_dotfile ".zshrc"
         unlink_dotfile ".config"
         unlink_dotfile ".warp"
-        # rm $HOME/.gitconfig
         rm $HOME/.zprofile
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"
-        # sudo rm -rf /Library/Developer/CommandLineTools
     fi
 }
