@@ -1,29 +1,21 @@
 #!/bin/bash
 
-source .zsh/color-vars.zsh
-
-DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source ./helpers.sh
+source ../.zsh/colors.zsh
 
 move_dotfiles() {
-    echo -e "${BackBlue}Moving dotfiles to root...${Off}"
-    echo -e "${Red}Moving dotfiles to root is recommended so that you can easily update them.${Off}"
+    echo -e "${BackCyan}Moving dotfiles to root...${Off}"
 
-    echo -e "${Purple}Do you want to move dotfiles to root? (y/n): ${Off}"
-    read move_dotfiles
-    if [[ $move_dotfiles = [Yy]* ]]; then
-        if [[ $DOTFILES_DIR != $HOME/dotfiles ]]; then
-            mv $DOTFILES_DIR $HOME
-            DOTFILES_DIR=$HOME/dotfiles
-        else
-            echo -e "${Yellow}Dotfiles are already in home directory.${Off}"
-        fi
+    if [[ $DOTFILES_DIR != $HOME/dotfiles ]]; then
+        mv $DOTFILES_DIR $HOME
+        DOTFILES_DIR=$HOME/dotfiles
     else
-        echo -e "${Yellow}Skipping dotfile move.${Off}"
+        echo -e "${Yellow}Dotfiles are already in home directory.${Off}"
     fi
 }
 
 install_xcode_command_line_tools() {
-    echo -e "${BackBlue}Checking for Xcode Command Line Tools...${Off}"
+    echo -e "${BackCyan}Checking for Xcode Command Line Tools...${Off}"
     if xcode-select -p &>/dev/null; then
         echo -e "${Cyan}Xcode Command Line Tools are already installed.${Off}"
         
@@ -36,13 +28,13 @@ install_xcode_command_line_tools() {
         fi
     else
         echo -e "${Blue}Xcode Command Line Tools are not installed. Installing now...${Off}"
-        xcode-select --install
+        sudo xcode-select --install
     fi
 }
 
 install_homebrew() {
     echo -e "\n"
-    echo -e "${BackBlue}Checking for Homebrew...${Off}"
+    echo -e "${BackCyan}Checking for Homebrew...${Off}"
     if command -v brew &>/dev/null; then
         echo -e "${Cyan}Homebrew is already installed.${Off}"
 
@@ -58,107 +50,48 @@ install_homebrew() {
     else
         echo -e "${Blue}Homebrew is not installed. Installing now...${Off}"
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    fi
-}
 
-install_nvm() {
-    echo -e "\n"
-    echo -e "${BackBlue}Checking for NVM...${Off}"
-
-    source $(brew --prefix nvm)/nvm.sh
-    if type nvm &>/dev/null; then
-        echo -e "${Cyan}NVM is already installed.${Off}"
-
-        echo -e "${Purple}Do you want to update NVM? (y/n): ${Off}"
-        read update_nvm
-        if [[ $update_nvm = [Yy]* ]]; then
-            echo -e "${Blue}Updating NVM...${Off}"
-            brew upgrade nvm
-        else
-            echo -e "${Yellow}Skipping NVM update.${Off}"
-        fi
-    else
-        echo -e "${Blue}NVM is not installed. Installing now...${Off}"
-        brew install nvm
-        source $(brew --prefix nvm)/nvm.sh
-
-        if [ ! -d ~/.nvm ]; then
-            echo -e "${Blue}Creating .nvm directory...${Off}"
-            mkdir ~/.nvm
-        fi
-
-        echo -e "${Blue}Installing Node...${Off}"
-        nvm install --lts
-
-        echo -e "${Blue}Linking NVM...${Off}"
-        ln -s $(brew --prefix nvm)/nvm.sh ~/.nvm/nvm.sh
-        ln -s $(brew --prefix nvm)/nvm-exec ~/.nvm/nvm-exec
-    fi
-}
-
-remove_git_origin_remote() {
-    echo -e "\n"
-    echo -e "${BackBlue}Git Origin Remote${Off}"
-    echo -e "${Red}Removing the git origin remote is recommended so that you can use this repo as a template for your own dotfiles.${Off}"
-
-    echo -e "${Purple}Do you want to remove the git origin remote? (y/n): ${Off}"
-    read remove_git_origin
-    if [[ $remove_git_origin = [Yy]* ]]; then
-        echo -e "${Blue}Removing the git origin remote...${Off}"
-        git remote remove origin
-
-        echo -e "${Green}Do you want to add a new git origin remote? (y/n): ${Off}"
-        read add_git_origin
-        if [[ $add_git_origin = [Yy]* ]]; then
-            echo -e "${Blue}Adding a new git origin remote...${Off}"
-            read git_origin_url
-            git remote add origin $git_origin_url
-        else
-            echo -e "${Yellow}Skipping git origin remote addition and deleting the .git directory...${Off}"
-            rm -rf .git
-        fi
-    else
-        echo -e "${Yellow}Skipping git origin remote removal.${Off}"
-    fi
-}
-
-symlink_dotfiles() {
-    echo -e "\n"
-    echo -e "${BackBlue}Symlink Dotfile${Off}"
-    echo -e "${Red}Symlinking dotfiles is recommended so that you can easily update them.${Off}"
-
-    echo -e "${Purple}Do you want to symlink dotfiles? (y/n): ${Off}"
-    read symlink
-    if [[ $symlink = [Yy]* ]]; then
-        echo -e "${Blue}Symlinking dotfiles...${Off}"
-        ln -s $DOTFILES_DIR/.zshrc ~/.zshrc
-        ln -s $DOTFILES_DIR/.gitconfig ~/.gitconfig
-    else
-        echo -e "${Yellow}Skipping dotfile symlinking.${Off}"
+        (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> ~/.zprofile
+        eval "$(/opt/homebrew/bin/brew shellenv)"
     fi
 }
 
 configure_git() {
     echo -e "\n"
-    echo -e "${BackBlue}Git Configuration${Off}"
+    echo -e "${BackCyan}Git Configuration${Off}"
     echo -e "${Purple}Do you want to set common git config values? (y/n): ${Off}"
     read git_config
     if [[ $git_config = [Yy]* ]]; then
             if [ -f ~/.gitconfig ]; then
                 echo -e "${Cyan}Git config already exists.${Off}"
+
+                echo -e "${Purple}Do you want to overwrite your git config? (y/n): ${Off}"
+                read overwrite_git_config
+                if [[ $overwrite_git_config = [Yy]* ]]; then
+                    echo -e "${Blue}Overwriting git config...${Off}"
+                    rm ~/.gitconfig
+                    touch ~/.gitconfig
+                else
+                    echo -e "${Yellow}Skipping git config overwrite.${Off}"
+                fi
             else
                 echo -e "${Blue}Creating git config...${Off}"
                 touch ~/.gitconfig
             fi
         read -p "Enter your name: " git_name
         read -p "Enter your email: " git_email
-        read -p "Set VS Code as your preffered editor? (y/m): " git_editor
+        read -p "Set VS Code as your preffered editor? (y/n): " git_editor
         read -p "Set rebasing as default merge strategy? (y/n): " git_rebase
 
         echo "Setting git config values..."
         git config --global user.name "$git_name"
         git config --global user.email "$git_email"
         git config --global init.defaultBranch main
+        git config --global filter.lfs.clean "git-lfs clean -- %f"
+        git config --global filter.lfs.smudge "git-lfs smudge -- %f"
+        git config --global filter.lfs.process "git-lfs filter-process"
+        git config --global filter.lfs.required true
+        git config --global alias.hist "log --pretty=format:\"%h %ad | %s%d [%an]\" --graph --date=short"
 
         if [[ $git_editor = [Yy]* ]]; then
             if command -v code &>/dev/null; then
@@ -185,6 +118,55 @@ configure_git() {
     fi
 }
 
+symlink_dotfiles() {
+    echo -e "\n"
+    echo -e "${BackCyan}Symlink Dotfile${Off}"
+    echo -e "${Red}Symlinking dotfiles is recommended so that you can easily update them.${Off}"
+
+    echo -e "${Purple}Do you want to symlink dotfiles? (y/n): ${Off}"
+    read symlink
+    if [[ $symlink = [Yy]* ]]; then
+        echo -e "${Blue}Symlinking dotfiles...${Off}"
+        symlink ".zshrc"
+        symlink ".config"
+        symlink ".warp"
+    else
+        echo -e "${Yellow}Skipping dotfile symlinking.${Off}"
+    fi
+}
+
+install_nvm() {
+    echo -e "\n"
+    echo -e "${BackCyan}Checking for NVM...${Off}"
+
+    if type nvm &>/dev/null; then
+        echo -e "${Cyan}NVM is already installed.${Off}"
+
+        echo -e "${Purple}Do you want to update NVM? (y/n): ${Off}"
+        read update_nvm
+        if [[ $update_nvm = [Yy]* ]]; then
+            echo -e "${Blue}Updating NVM...${Off}"
+            brew upgrade nvm
+        else
+            echo -e "${Yellow}Skipping NVM update.${Off}"
+        fi
+    else
+        echo -e "${Blue}NVM is not installed. Installing now...${Off}"
+        brew install nvm
+
+        if [ ! -d ~/.nvm ]; then
+            echo -e "${Blue}Creating .nvm directory...${Off}"
+            mkdir ~/.nvm
+        fi
+
+        source $(brew --prefix nvm)/nvm.sh
+
+        echo -e "${Blue}Installing Node LTS...${Off}"
+        nvm install --lts
+        nvm alias default lts/*
+    fi
+}
+
 # Main script execution starts here
 
 # Run a single command with the -c flag ./setup.sh -c [command]
@@ -193,6 +175,8 @@ if [[ $1 = "-c" ]]; then
     echo -e "\n"
     echo -e "${BackCyan}Command complete!${Off}"
     echo -e "\n"
+
+    source $HOME/dotfiles/.zshrc
 else
     echo -e "${BrCyan} ___   _              _                     ___         _                            ${Off}"
     echo -e "${BrCyan}(  _\`\( )_           ( )_ _                (  _\`\\      ( )_                       ${Off}"
@@ -207,10 +191,11 @@ else
     move_dotfiles
     install_xcode_command_line_tools
     install_homebrew
-    install_nvm
-    remove_git_origin_remote
-    symlink_dotfiles
     configure_git
+    symlink_dotfiles
+    install_nvm
+
+    source $HOME/dotfiles/.zshrc
 
     echo -e "\n"
     echo -e "${BackCyan}Setup complete!${Off}"

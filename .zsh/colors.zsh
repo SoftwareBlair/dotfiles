@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Reset
 export Off='\033[0m'       # Text Reset
 

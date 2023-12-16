@@ -1,11 +1,7 @@
-# #!/bin/bash
-
-NVM_DIR="$HOME/.nvm"
-
 # NVM lazy load
-if [ -s "$NVM_DIR/nvm.sh" ]; then
-  [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
-  alias nvm='unalias nvm node npm && . "$NVM_DIR"/nvm.sh && nvm'
-  alias node='unalias nvm node npm && . "$NVM_DIR"/nvm.sh && node'
-  alias npm='unalias nvm node npm && . "$NVM_DIR"/nvm.sh && npm'
+if [ -s "$(brew --prefix nvm)/nvm.sh" ]; then
+  [ -s "$(brew --prefix nvm)/bash_completion" ] && . "$(brew --prefix nvm)/bash_completion"
+  alias nvm='unalias nvm node npm && . "$(brew --prefix nvm)"/nvm.sh && nvm'
+  alias node='unalias nvm node npm && . "$(brew --prefix nvm)"/nvm.sh && node'
+  alias npm='unalias nvm node npm && . "$(brew --prefix nvm)"/nvm.sh && npm'
 fi
