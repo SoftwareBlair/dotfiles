@@ -33,6 +33,8 @@ chmod +x setup.sh
 
 > If the dotfiles is not in root, run `./setup.sh -c move_dotfiles` from the scripts directory
 
+Restart the terminal
+
 ## Running Specific Commands from setup.sh
 
 The `setup.sh` script in this repository is designed for versatility, allowing you to run specific parts of the setup process individually. This can be particularly useful if you want to execute only a certain function without going through the entire script.
