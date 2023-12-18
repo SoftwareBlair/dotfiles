@@ -111,6 +111,69 @@ configure_git() {
     echo -e "\n"
 }
 
+install_hack_nerd_font() {
+    echo -e "${BackCyan}Checking for Hack Nerd Font...${Off}"
+    if [ -f ~/Library/Fonts/Hack\ Regular\ Nerd\ Font\ Complete.ttf ]; then
+        echo -e "${Cyan}Hack Nerd Font is already installed.${Off}"
+
+        echo -e "${Purple}Do you want to update Hack Nerd Font? (y/n): ${Off}"
+        read update_hack_nerd_font
+        if [[ $update_hack_nerd_font = [Yy]* ]]; then
+            echo -e "${Blue}Updating Hack Nerd Font...${Off}"
+            brew upgrade font-hack-nerd-font
+        else
+            echo -e "${Yellow}Skipping Hack Nerd Font update.${Off}"
+        fi
+    else
+        echo -e "${Blue}Hack Nerd Font is not installed. Installing now...${Off}"
+        brew install --cask font-hack-nerd-font
+    fi
+
+    echo -e "\n"
+}
+
+install_starship() {
+    echo -e "${BackCyan}Checking for Starship...${Off}"
+    if command -v starship &>/dev/null; then
+        echo -e "${Cyan}Starship is already installed.${Off}"
+
+        echo -e "${Purple}Do you want to update Starship? (y/n): ${Off}"
+        read update_starship
+        if [[ $update_starship = [Yy]* ]]; then
+            echo -e "${Blue}Updating Starship...${Off}"
+            brew upgrade starship
+        else
+            echo -e "${Yellow}Skipping Starship update.${Off}"
+        fi
+    else
+        echo -e "${Blue}Starship is not installed. Installing now...${Off}"
+        brew install starship
+    fi
+
+    echo -e "\n"
+}
+
+install_exa() {
+    echo -e "${BackCyan}Checking for Exa...${Off}"
+    if command -v exa &>/dev/null; then
+        echo -e "${Cyan}Exa is already installed.${Off}"
+
+        echo -e "${Purple}Do you want to update Exa? (y/n): ${Off}"
+        read update_exa
+        if [[ $update_exa = [Yy]* ]]; then
+            echo -e "${Blue}Updating Exa...${Off}"
+            brew upgrade exa
+        else
+            echo -e "${Yellow}Skipping Exa update.${Off}"
+        fi
+    else
+        echo -e "${Blue}Exa is not installed. Installing now...${Off}"
+        brew install exa
+    fi
+
+    echo -e "\n"
+}
+
 symlink_dotfiles() {
     echo -e "${BackCyan}Symlink Dotfile${Off}"
     echo -e "${Blue}Symlinking dotfiles...${Off}"
@@ -200,6 +263,9 @@ else
     install_xcode_command_line_tools
     install_homebrew
     configure_git
+    install_hack_nerd_font
+    install_starship
+    install_exa
     symlink_dotfiles
     install_nvm
 

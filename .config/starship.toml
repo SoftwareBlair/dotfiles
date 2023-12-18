@@ -1,16 +1,54 @@
 # Get editor completions based on the config schema
-"$schema" = 'https://starship.rs/config-schema.json'
+# "$schema" = 'https://starship.rs/config-schema.json'
+
+format = """
+${custom.time_icon}\
+$time_icon\
+$time\
+$username\
+$directory\
+$git_status\
+$git_branch\
+${custom.git_status}\
+$package\
+$character\
+$package\
+${custom.warp_friendly_line_break}\
+"""
 
 # Inserts a blank line between shell prompts
 add_newline = false
 
 [character]
-success_symbol = '[✔️](bold green)'
-error_symbol = '[✖️](bold red)'
+error_symbol = '[⚠️](bold red)'
+success_symbol = "[✔️](bold green)"
 
-# Disable the package module, hiding it from the prompt completely
 [package]
-# disabled = true
+disabled = true
+
+[custom.time_icon]
+disabled = false
+command = '''
+TIME=$(date +%H)
+if [[ "$TIME" -le 17 && "$TIME" -ge 8 ]];then
+    time_symbol="🌤"
+elif [[ "$TIME" -le 21 && "$TIME" -ge 18 ]];then
+    time_symbol="🌖"
+elif [[ "$TIME" -le 4 || "$TIME" -ge 22 ]];then
+    time_symbol="🌙"
+else
+    time_symbol="🌔"
+fi
+echo "$time_symbol "
+'''
+format = "[$output]($style)"
+when = "true"
+
+[time]
+disabled = false
+format = '[ $time ]($style)'
+style = 'yellow'
+utc_time_offset = "local"
 
 [username]
 style_user = 'green bold'
@@ -26,35 +64,29 @@ read_only_style = '197'
 read_only = '  '
 format = 'at [$path]($style)[$read_only]($read_only_style) '
 
-[docker_context]
-symbol = '🐳 '
-format = ' [🐳 $symbol$context]($style)'
-style = 'bold blue'
-detect_files = [ "docker-compose.yml", "docker-compose.yaml", "Dockerfile" ]
-
 [git_status]
 format = ''
 
 [custom.git_status]
 command = '''
-  git_status=$(git status --porcelain)
-  # Untracked or Deleted (unstaged) files - Red
-  if echo ${git_status} | grep -qe '^?? ' -e '^[MARCDU ]D ' -e '^D[ UM]'; then
-      echo -n $'\e[31m● '
-  fi
+git_status=$(git status --porcelain)
+# Untracked or Deleted (unstaged) files - Red
+if echo ${git_status} | grep -qe '^?? ' -e '^[MARCDU ]D ' -e '^D[ UM]'; then
+    echo -n $'\e[31m● '
+fi
 
-  # Modified (unstaged) and Renamed files - Yellow
-  if echo ${git_status} | grep -qe '^[ MARC]M ' -e '^R[ MD] '; then
-      echo -n $'\e[33m● '
-  fi
+# Modified (unstaged) and Renamed files - Yellow
+if echo ${git_status} | grep -qe '^[ MARC]M ' -e '^R[ MD] '; then
+    echo -n $'\e[33m● '
+fi
 
-  # Staged files (including Deleted) - Green
-  if echo ${git_status} | grep -qe '^A[ MDAU] ' -e '^M[ MD] ' -e '^UA' -e '^D '; then
-      echo -n $'\e[32m● '
-  fi
+# Staged files (including Deleted) - Green
+if echo ${git_status} | grep -qe '^A[ MDAU] ' -e '^M[ MD] ' -e '^UA' -e '^D '; then
+    echo -n $'\e[32m● '
+fi
 '''
 when = 'git rev-parse --is-inside-work-tree >/dev/null 2>&1'
-format = '($output)'
+format = '($output)($style) '
 
 [custom.warp_friendly_line_break]
 description = 'Only inserts a line break when not using Warp'
