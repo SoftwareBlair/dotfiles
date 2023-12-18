@@ -41,7 +41,7 @@ else
 fi
 echo "$time_symbol "
 '''
-format = "[$output]($style)"
+format = "[$output]($style) "
 when = "true"
 
 [time]
