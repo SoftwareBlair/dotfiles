@@ -1,5 +1,5 @@
 # Aliases using exa
-alias l='exa --all --long --header --group-directories-first'
+alias l='exa --all --long --group --header --group-directories-first'
 
 tree() {
   default_level=2
