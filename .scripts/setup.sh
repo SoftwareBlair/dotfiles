@@ -23,6 +23,7 @@ install_xcode_command_line_tools() {
     echo -e "\n"
 }
 
+# https://brew.sh
 install_homebrew() {
     echo -e "${BackCyan}Checking for Homebrew...${Off}"
     if command -v brew &>/dev/null; then
@@ -111,6 +112,7 @@ configure_git() {
     echo -e "\n"
 }
 
+# https://www.nerdfonts.com
 install_hack_nerd_font() {
     echo -e "${BackCyan}Checking for Hack Nerd Font...${Off}"
     if [ -f ~/Library/Fonts/Hack\ Regular\ Nerd\ Font\ Complete.ttf ]; then
@@ -132,6 +134,7 @@ install_hack_nerd_font() {
     echo -e "\n"
 }
 
+# https://starship.rs
 install_starship() {
     echo -e "${BackCyan}Checking for Starship...${Off}"
     if command -v starship &>/dev/null; then
@@ -153,6 +156,7 @@ install_starship() {
     echo -e "\n"
 }
 
+# https://the.exa.website
 install_exa() {
     echo -e "${BackCyan}Checking for Exa...${Off}"
     if command -v exa &>/dev/null; then
@@ -199,6 +203,7 @@ symlink_dotfiles() {
     echo -e "\n"
 }
 
+# https://github.com/nvm-sh/nvm
 install_nvm() {
     echo -e "${BackCyan}Checking for NVM...${Off}"
 
