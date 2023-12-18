@@ -1,0 +1,62 @@
+# Get editor completions based on the config schema
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# Inserts a blank line between shell prompts
+add_newline = false
+
+[character]
+success_symbol = '[✔️](bold green)'
+error_symbol = '[✖️](bold red)'
+
+# Disable the package module, hiding it from the prompt completely
+[package]
+# disabled = true
+
+[username]
+style_user = 'green bold'
+format = '[$user]($style) '
+disabled = false
+show_always = true
+
+[directory]
+truncation_length = 1
+truncation_symbol = '…/'
+home_symbol = '󰋜 ~'
+read_only_style = '197'
+read_only = '  '
+format = 'at [$path]($style)[$read_only]($read_only_style) '
+
+[docker_context]
+symbol = '🐳 '
+format = ' [🐳 $symbol$context]($style)'
+style = 'bold blue'
+detect_files = [ "docker-compose.yml", "docker-compose.yaml", "Dockerfile" ]
+
+[git_status]
+format = ''
+
+[custom.git_status]
+command = '''
+  git_status=$(git status --porcelain)
+  # Untracked or Deleted (unstaged) files - Red
+  if echo ${git_status} | grep -qe '^?? ' -e '^[MARCDU ]D ' -e '^D[ UM]'; then
+      echo -n $'\e[31m● '
+  fi
+
+  # Modified (unstaged) and Renamed files - Yellow
+  if echo ${git_status} | grep -qe '^[ MARC]M ' -e '^R[ MD] '; then
+      echo -n $'\e[33m● '
+  fi
+
+  # Staged files (including Deleted) - Green
+  if echo ${git_status} | grep -qe '^A[ MDAU] ' -e '^M[ MD] ' -e '^UA' -e '^D '; then
+      echo -n $'\e[32m● '
+  fi
+'''
+when = 'git rev-parse --is-inside-work-tree >/dev/null 2>&1'
+format = '($output)'
+
+[custom.warp_friendly_line_break]
+description = 'Only inserts a line break when not using Warp'
+when = '[ "$TERM_PROGRAM" != "WarpTerminal" ]'
+format = "\n"
