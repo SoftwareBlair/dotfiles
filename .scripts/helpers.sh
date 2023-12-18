@@ -68,6 +68,8 @@ revert_setup() {
     if [[ $revert_setup = [Yy]* ]]; then
         echo -e "${Blue}Reverting setup...${Off}"
         uninstall_nvm
+        brew uninstall starship
+        brew uninstall exa
         unlink_dotfile ".zshrc"
         unlink_dotfile ".config"
         unlink_dotfile ".warp"
