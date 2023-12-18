@@ -70,6 +70,8 @@ revert_setup() {
         uninstall_nvm
         brew uninstall starship
         brew uninstall exa
+        brew uninstall warp
+        brew uninstall raycast
         unlink_dotfile ".zshrc"
         unlink_dotfile ".config"
         unlink_dotfile ".warp"

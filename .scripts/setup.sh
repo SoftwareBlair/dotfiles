@@ -178,6 +178,50 @@ install_exa() {
     echo -e "\n"
 }
 
+# https://www.warp.dev/
+install_warp() {
+    echo -e "${BackCyan}Checking for Warp...${Off}"
+    if command -v warp &>/dev/null; then
+        echo -e "${Cyan}Warp is already installed.${Off}"
+
+        echo -e "${Purple}Do you want to update Warp? (y/n): ${Off}"
+        read update_warp
+        if [[ $update_warp = [Yy]* ]]; then
+            echo -e "${Blue}Updating Warp...${Off}"
+            brew upgrade warp
+        else
+            echo -e "${Yellow}Skipping Warp update.${Off}"
+        fi
+    else
+        echo -e "${Blue}Warp is not installed. Installing now...${Off}"
+        brew install --cask warp
+    fi
+
+    echo -e "\n"
+}
+
+# https://www.raycast.com/
+install_raycast() {
+    echo -e "${BackCyan}Checking for Raycast...${Off}"
+    if command -v raycast &>/dev/null; then
+        echo -e "${Cyan}Raycast is already installed.${Off}"
+
+        echo -e "${Purple}Do you want to update Raycast? (y/n): ${Off}"
+        read update_raycast
+        if [[ $update_raycast = [Yy]* ]]; then
+            echo -e "${Blue}Updating Raycast...${Off}"
+            brew upgrade raycast
+        else
+            echo -e "${Yellow}Skipping Raycast update.${Off}"
+        fi
+    else
+        echo -e "${Blue}Raycast is not installed. Installing now...${Off}"
+        brew install --cask raycast
+    fi
+
+    echo -e "\n"
+}
+
 symlink_dotfiles() {
     echo -e "${BackCyan}Symlink Dotfile${Off}"
     echo -e "${Blue}Symlinking dotfiles...${Off}"
@@ -271,6 +315,8 @@ else
     install_hack_nerd_font
     install_starship
     install_exa
+    install_warp
+    install_raycast
     symlink_dotfiles
     install_nvm
 
