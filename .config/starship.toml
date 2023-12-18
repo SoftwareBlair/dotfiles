@@ -11,17 +11,16 @@ $git_status\
 $git_branch\
 ${custom.git_status}\
 $package\
-$character\
-$package\
 ${custom.warp_friendly_line_break}\
+$character\
 """
 
 # Inserts a blank line between shell prompts
 add_newline = false
 
 [character]
-error_symbol = '[⚠️](bold red)'
-success_symbol = "[✔️](bold green)"
+error_symbol = '[⚠️](bold red) '
+success_symbol = '[✔️](bold green) '
 
 [package]
 disabled = true
