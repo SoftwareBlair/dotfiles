@@ -1,10 +1,12 @@
 # Aliases using exa
-alias l='exa --all --long --group --header --group-directories-first'
+alias l='exa --all --binary --long --group --header --git --group-directories-first --icons'
+alias grid='exa --grid --all --binary --long --group --header --git --group-directories-first --icons'
 
 tree() {
   default_level=2
+  default_path="."
 
-  exa --tree --level=${1:-$default_level} --all --long --header --group-directories-first --ignore-glob=".git|node_modules|dist|build|coverage|*.log"
+  exa --tree --level=${1:-$default_level} --all --binary --long --header --group-directories-first --ignore-glob=".git|node_modules|dist|build|coverage|*.log" ${2:-$default_path} --icons
 }
 
 take() {
