@@ -1,7 +1,27 @@
-# NVM lazy load
-if [ -s "$(brew --prefix nvm)/nvm.sh" ]; then
-  [ -s "$(brew --prefix nvm)/bash_completion" ] && . "$(brew --prefix nvm)/bash_completion"
-  alias nvm='unalias nvm node npm && . "$(brew --prefix nvm)"/nvm.sh && nvm'
-  alias node='unalias nvm node npm && . "$(brew --prefix nvm)"/nvm.sh && node'
-  alias npm='unalias nvm node npm && . "$(brew --prefix nvm)"/nvm.sh && npm'
-fi
+export NVM_DIR="$HOME/.nvm"
+[ -s "$(brew --prefix nvm)/nvm.sh" ] && \. "$(brew --prefix nvm)/nvm.sh"
+[ -s "$(brew --prefix nvm)/etc/bash_completion" ] && \. "$(brew --prefix nvm)/etc/bash_completion"
+
+autoload -U add-zsh-hook
+
+load-nvmrc() {
+  local nvmrc_path
+  nvmrc_path="$(nvm_find_nvmrc)"
+
+  if [ -n "$nvmrc_path" ]; then
+    local nvmrc_node_version
+    nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
+
+    if [ "$nvmrc_node_version" = "N/A" ]; then
+      nvm install && nvm use
+    elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
+      nvm use
+    fi
+  elif [ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ] && [ "$(nvm version)" != "$(nvm version default)" ]; then
+    echo "Reverting to nvm default version"
+    nvm use default
+  fi
+}
+
+add-zsh-hook chpwd load-nvmrc
+load-nvmrc
