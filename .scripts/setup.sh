@@ -247,6 +247,62 @@ symlink_dotfiles() {
     echo -e "\n"
 }
 
+install_zsh_plugins() {
+    # https://github.com/zsh-users/zsh-autosuggestions
+    echo -e "${BackCyan}Checking for zsh-autosuggestions...${Off}"
+    if [ -d $(brew --prefix)/share/zsh-autosuggestions ]; then
+        echo -e "${Cyan}zsh-autosuggestions is already installed.${Off}"
+
+        echo -e "${Purple}Do you want to update zsh-autosuggestions? (y/n): ${Off}"
+        read update_zsh_autosuggestions
+        if [[ $update_zsh_autosuggestions = [Yy]* ]]; then
+            echo -e "${Blue}Updating zsh-autosuggestions...${Off}"
+            brew upgrade zsh-autosuggestions
+        else
+            echo -e "${Yellow}Skipping zsh-autosuggestions update.${Off}"
+        fi
+    else
+        echo -e "${Blue}zsh-autosuggestions is not installed. Installing now...${Off}"
+        brew install zsh-autosuggestions
+    fi
+
+    # https://github.com/zsh-users/zsh-syntax-highlighting
+    echo -e "${BackCyan}Checking for zsh-syntax-highlighting...${Off}"
+    if [ -d $(brew --prefix)/share/zsh-syntax-highlighting ]; then
+        echo -e "${Cyan}zsh-syntax-highlighting is already installed.${Off}"
+
+        echo -e "${Purple}Do you want to update zsh-syntax-highlighting? (y/n): ${Off}"
+        read update_zsh_syntax_highlighting
+        if [[ $update_zsh_syntax_highlighting = [Yy]* ]]; then
+            echo -e "${Blue}Updating zsh-syntax-highlighting...${Off}"
+            brew upgrade zsh-syntax-highlighting
+        else
+            echo -e "${Yellow}Skipping zsh-syntax-highlighting update.${Off}"
+        fi
+    else
+        echo -e "${Blue}zsh-syntax-highlighting is not installed. Installing now...${Off}"
+        brew install zsh-syntax-highlighting
+    fi
+
+    # https://github.com/rupa/z
+    echo -e "${BackCyan}Checking for z...${Off}"
+    if [ -f $(brew --prefix)/etc/profile.d/z.sh ]; then
+        echo -e "${Cyan}z is already installed.${Off}"
+
+        echo -e "${Purple}Do you want to update z? (y/n): ${Off}"
+        read update_z
+        if [[ $update_z = [Yy]* ]]; then
+            echo -e "${Blue}Updating z...${Off}"
+            brew upgrade z
+        else
+            echo -e "${Yellow}Skipping z update.${Off}"
+        fi
+    else
+        echo -e "${Blue}z is not installed. Installing now...${Off}"
+        brew install z
+    fi
+}
+
 # https://github.com/nvm-sh/nvm
 install_nvm() {
     echo -e "${BackCyan}Checking for NVM...${Off}"
@@ -318,6 +374,7 @@ else
     install_warp
     install_raycast
     symlink_dotfiles
+    install_zsh_plugins
     install_nvm
 
     source $HOME/dotfiles/.zshrc
