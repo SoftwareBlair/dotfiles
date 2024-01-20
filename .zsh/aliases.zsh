@@ -5,6 +5,10 @@ alias grid='exa --grid --all --binary --long --group --header --git --group-dire
 # git aliases
 alias g='git'
 alias gs='git status'
+alias gf='git fetch'
+alias gfa='git fetch --all'
+alias gfp='git fetch --prune --all'
+alias gp='git pull'
 alias ga='git add'
 alias gaa='git add --all'
 alias gc='git commit'
