@@ -1,6 +1,6 @@
-# Aliases using exa
-alias l='exa --all --binary --long --group --header --git --group-directories-first --icons'
-alias grid='exa --grid --all --binary --long --group --header --git --group-directories-first --icons'
+# Aliases using eza
+alias l='eza --all --binary --long --group --header --git --group-directories-first --icons'
+alias grid='eza --grid --all --binary --long --group --header --git --group-directories-first --icons'
 
 # git aliases
 alias g='git'
@@ -23,7 +23,7 @@ tree() {
   default_level=2
   default_path="."
 
-  exa --tree --level=${1:-$default_level} --all --binary --long --header --group-directories-first --ignore-glob=".git|node_modules|dist|build|coverage|*.log" ${2:-$default_path} --icons
+  eza --tree --level=${1:-$default_level} --all --binary --long --header --group-directories-first --ignore-glob=".git|node_modules|dist|build|coverage|*.log" ${2:-$default_path} --icons
 }
 
 take() {

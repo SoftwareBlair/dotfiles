@@ -156,23 +156,23 @@ install_starship() {
     echo -e "\n"
 }
 
-# https://the.exa.website
-install_exa() {
-    echo -e "${BackCyan}Checking for Exa...${Off}"
-    if command -v exa &>/dev/null; then
-        echo -e "${Cyan}Exa is already installed.${Off}"
+# https://eza.rocks/
+install_eza() {
+    echo -e "${BackCyan}Checking for Eza...${Off}"
+    if command -v eza &>/dev/null; then
+        echo -e "${Cyan}Eza is already installed.${Off}"
 
-        echo -e "${Purple}Do you want to update Exa? (y/n): ${Off}"
-        read update_exa
-        if [[ $update_exa = [Yy]* ]]; then
-            echo -e "${Blue}Updating Exa...${Off}"
-            brew upgrade exa
+        echo -e "${Purple}Do you want to update Eza? (y/n): ${Off}"
+        read update_eza
+        if [[ $update_eza = [Yy]* ]]; then
+            echo -e "${Blue}Updating Eza...${Off}"
+            brew upgrade eza
         else
-            echo -e "${Yellow}Skipping Exa update.${Off}"
+            echo -e "${Yellow}Skipping Eza update.${Off}"
         fi
     else
-        echo -e "${Blue}Exa is not installed. Installing now...${Off}"
-        brew install exa
+        echo -e "${Blue}Eza is not installed. Installing now...${Off}"
+        brew install eza
     fi
 
     echo -e "\n"
@@ -370,7 +370,7 @@ else
     configure_git
     install_hack_nerd_font
     install_starship
-    install_exa
+    install_eza
     install_warp
     install_raycast
     symlink_dotfiles
