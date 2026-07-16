@@ -1,5 +1,5 @@
 # Reset
-export Off='\033[0m'       # Text Reset
+export Off='\033[0m'               # Text Reset
 
 # Regular Colors
 export Black='\033[0;30m'          # Black

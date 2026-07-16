@@ -69,7 +69,7 @@ revert_setup() {
         echo -e "${Blue}Reverting setup...${Off}"
         uninstall_nvm
         brew uninstall starship
-        brew uninstall exa
+        brew uninstall eza
         brew uninstall warp
         brew uninstall raycast
         unlink_dotfile ".zshrc"

@@ -11,8 +11,8 @@ $git_status\
 $git_branch\
 ${custom.git_status}\
 $package\
-${custom.warp_friendly_line_break}\
 $character\
+${custom.prompt_line_break}\
 """
 
 # Inserts a blank line between shell prompts
@@ -87,7 +87,12 @@ fi
 when = 'git rev-parse --is-inside-work-tree >/dev/null 2>&1'
 format = '($output)($style) '
 
-[custom.warp_friendly_line_break]
-description = 'Only inserts a line break when not using Warp'
-when = '[ "$TERM_PROGRAM" != "WarpTerminal" ]'
-format = "\n"
+[custom.prompt_line_break]
+disabled = false
+when = 'true'
+format = "\n [⌘](bold blue) "
+
+# [custom.warp_friendly_line_break]
+# description = 'Only inserts a line break when not using Warp'
+# when = '[ "$TERM_PROGRAM" != "WarpTerminal" ]'
+# format = "\n"

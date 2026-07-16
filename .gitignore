@@ -1,4 +1,10 @@
 .DS_Store
 .vscode
 .gitconfig
-.config/raycast/*
+
+.config/*
+!.config/starship.toml
+
+.config/zed/*
+!.config/zed/settings.json
+!.config/zed/themes/*
