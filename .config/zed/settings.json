@@ -1,0 +1,144 @@
+// Zed settings
+//
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run the `open default settings` command
+// from the command palette or from `Zed` application menu.
+{
+  "diff_view_style": "unified",
+  "outline_panel": {
+    "dock": "right",
+  },
+  "git_panel": {
+    "dock": "right",
+  },
+  "text_rendering_mode": "subpixel",
+  "agent_servers": {
+    "claude-acp": {
+      "default_config_options": {
+        "mode": "plan"
+      },
+      "type": "registry"
+    },
+    "github-copilot-cli": {
+      "type": "registry"
+    },
+    "github-copilot": {
+      "type": "registry",
+    },
+  },
+  "redact_private_values": false,
+  "collaboration_panel": {
+    "dock": "right",
+    "default_width": 240.0,
+  },
+  "telemetry": {
+    "diagnostics": true,
+    "metrics": false,
+  },
+  "git": {
+    "inline_blame": {
+      "show_commit_summary": true,
+    },
+  },
+  "agent_buffer_font_size": 13,
+  "confirm_quit": true,
+  "formatter": "prettier",
+  "buffer_font_family": "Liga SFMono Nerd Font",
+  "agent": {
+    "dock": "left",
+    "favorite_models": [
+      {
+        "provider": "copilot_chat",
+        "model": "claude-sonnet-4.6",
+        "enable_thinking": false,
+      },
+      {
+        "provider": "copilot_chat",
+        "model": "claude-opus-4.6",
+        "enable_thinking": false,
+      },
+      {
+        "provider": "copilot_chat",
+        "model": "claude-haiku-4.5",
+        "enable_thinking": false,
+      },
+      {
+        "provider": "copilot_chat",
+        "model": "gpt-5.3-codex",
+        "enable_thinking": false,
+      },
+    ],
+    "profiles": {},
+    "default_profile": "ask",
+    "default_model": {
+      "effort": "high",
+      "model": "gpt-5.3-codex",
+      "provider": "copilot_chat",
+    },
+    "model_parameters": [],
+    "play_sound_when_agent_done": "always",
+  },
+  "agent_ui_font_size": 14.0,
+  "buffer_font_size": 13.0,
+  "context_servers": {
+    "mcp-server-context7": {
+      "enabled": false,
+      "settings": {
+        "context7_api_key": "ctx7sk-671570ae-85b5-49d7-abee-cff3e74075fb",
+      },
+    },
+  },
+  "format_on_save": "on",
+  "icon_theme": "Symbols Icon Theme",
+  "lsp_document_colors": "background",
+  "project_panel": {
+    "dock": "right",
+    "indent_size": 16,
+  },
+  "terminal": {
+    "dock": "bottom",
+    "cursor_shape": "bar",
+    "blinking": "on",
+    "font_family": "Liga SFMono Nerd Font",
+  },
+  "theme": "Houston",
+  "ui_font_family": "Liga SFMono Nerd Font",
+  "ui_font_size": 13,
+  // "languages": {
+  //   "HTML": {
+  //     "language_servers": ["eslint", "vscode-html-language-server"],
+  //   },
+  //   "CSS": {
+  //     "language_servers": ["eslint", "vscode-css-language-server"],
+  //     "formatter": "prettier",
+  //   },
+  //   "SCSS": {
+  //     "language_servers": ["eslint", "vscode-css-language-server"],
+  //     "formatter": "prettier",
+  //   },
+  //   "TypeScript": {
+  //     "language_servers": ["eslint", "typescript-language-server", "!vtsls"],
+  //     "formatter": "prettier",
+  //     "code_actions_on_format": {
+  //       "source.fixAll.eslint": true,
+  //     },
+  //   },
+  //   "TSX": {
+  //     "language_servers": ["eslint", "typescript-language-server", "!vtsls"],
+  //     "formatter": "prettier",
+  //     "code_actions_on_format": {
+  //       "source.fixAll.eslint": true,
+  //     },
+  //   },
+  //   "JavaScript": {
+  //     "language_servers": ["eslint", "typescript-language-server", "!vtsls"],
+  //     "formatter": "prettier",
+  //     "code_actions_on_format": {
+  //       "source.fixAll.eslint": true,
+  //     },
+  //   },
+  // },
+}

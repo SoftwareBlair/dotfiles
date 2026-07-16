@@ -4,3 +4,7 @@
 
 .config/*
 !.config/starship.toml
+
+.config/zed/*
+!.config/zed/settings.json
+!.config/zed/themes/*

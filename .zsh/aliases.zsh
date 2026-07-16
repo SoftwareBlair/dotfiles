@@ -22,8 +22,9 @@ alias gbd='git branch -D'
 tree() {
   default_level=2
   default_path="."
+  default_ignore=".git|node_modules|dist|build|coverage|*.log|.nyc_output|*.zip"
 
-  eza --tree --level=${1:-$default_level} --all --binary --long --header --group-directories-first --ignore-glob=".git|node_modules|dist|build|coverage|*.log" ${2:-$default_path} --icons
+  eza --tree --level=${1:-$default_level} --all --binary --long --header --group-directories-first --ignore-glob=${3:-$default_ignore} ${2:-$default_path} --icons
 }
 
 take() {
