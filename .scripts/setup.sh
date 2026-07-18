@@ -45,21 +45,26 @@ Installs the same stack you use on improvements-while-using:
   then links this repo’s configs.
 
 Usage:
-  ./setup.sh              Interactive: confirm, then install
-  ./setup.sh -y           Non-interactive install
-  ./setup.sh -n           Dry-run (show plan, change nothing)
-  ./setup.sh -y -n        Non-interactive dry-run
-  ./setup.sh --undo       Undo what this script installed
-  ./setup.sh --undo -n    Preview undo
+  ./setup.sh                 Interactive: confirm, then install
+  ./setup.sh -y              Non-interactive install
+  ./setup.sh -n              Dry-run (show plan, change nothing)
+  ./setup.sh -y -n           Non-interactive dry-run
+  ./setup.sh --undo          Undo logged installs + symlinks
+  ./setup.sh --undo -n       Preview undo
+  ./setup.sh --undo --select Pick which logged actions to reverse
   ./setup.sh --pkgmgr brew|apt|dnf|pacman
-  ./setup.sh -c <helper>  move_dotfiles | revert_setup | …
+  ./setup.sh -c <helper>     move_dotfiles | revert_setup |
+                             symlink_dotfile | unlink_dotfile | …
 
 Defaults:
-  • Package manager: Homebrew (matches your Mac workflow; works on Linux too)
+  • Package manager: Homebrew (Mac workflow; works on Linux too)
+  • Editor: Cursor (VS Code optional when available)
   • Shell profile: Starship + this repo’s .zshrc
   • Dotfiles: symlink from this repo (any path; ~/dotfiles not required)
 
+Customize stack: edit MY_SETUP in .scripts/lib/presets.sh
 State: ~/.dotfiles-setup/  (install log, features, backups)
+See README.md for full docs.
 EOF
 }
 

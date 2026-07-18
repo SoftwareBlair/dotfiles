@@ -14,7 +14,7 @@ fi
 
 export DOTFILES_DIR
 
-# Load wizard-generated feature flags if not already loaded
+# Load setup-generated feature flags if not already loaded
 [[ -f "$HOME/.dotfiles-setup/shell-features.zsh" ]] && \
   source "$HOME/.dotfiles-setup/shell-features.zsh"
 

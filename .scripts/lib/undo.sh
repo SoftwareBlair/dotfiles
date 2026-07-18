@@ -90,7 +90,7 @@ run_undo() {
                 fi
                 ;;
             repo)
-                dry_run_add_step "Undo: $name" "sudo rm -f $side_effects" "$side_effects" "remove repo file owned by wizard" "true" ""
+                dry_run_add_step "Undo: $name" "sudo rm -f $side_effects" "$side_effects" "remove repo file owned by setup" "true" ""
                 ;;
             config)
                 if [[ "$id" == "brew-shellenv" ]]; then
@@ -141,8 +141,8 @@ run_undo() {
     fi
 
     echo ""
-    prompt_error "This will reverse ${#reverse[@]} action(s) recorded by the setup wizard."
-    prompt_warn "Only wizard-owned installs/symlinks/repos are removed. ~/.gitconfig is never deleted."
+    prompt_error "This will reverse ${#reverse[@]} action(s) recorded by setup."
+    prompt_warn "Only setup-owned installs/symlinks/repos are removed. ~/.gitconfig is never deleted."
     if ! prompt_confirm "Proceed with undo?" "false"; then
         prompt_warn "Undo cancelled."
         return 0

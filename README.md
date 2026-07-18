@@ -1,6 +1,6 @@
 # My machine setup (macOS + Linux)
 
-Installs **my usual stack** from the `improvements-while-using` workflow — fonts, Warp, **Cursor** (default editor), Zed, Starship, eza, zsh plugins, NVM — then symlinks this repo’s configs.
+Personal dotfiles plus a setup script that installs **my usual stack** — aligned with the `improvements-while-using` workflow — then symlinks this repo’s configs into `$HOME`.
 
 **Windows is not supported.**
 
@@ -13,36 +13,45 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-Confirm once and it installs. The repo can live anywhere (`~/dotfiles` is optional).
+Confirm once and it installs. The repo can live **anywhere**; moving to `~/dotfiles` is optional.
 
 ```bash
-./setup.sh -y              # non-interactive
-./setup.sh -n              # dry-run (preview only)
-./setup.sh -y -n           # non-interactive dry-run
-./setup.sh --pkgmgr apt    # or brew | dnf | pacman
-./setup.sh --undo          # reverse what this script installed
+./setup.sh -c move_dotfiles   # optional
 ```
 
 Restart your terminal when finished.
 
+## Common commands
+
+```bash
+./setup.sh                 # confirm, then install
+./setup.sh -y              # non-interactive install
+./setup.sh -n              # dry-run (preview only)
+./setup.sh -y -n           # non-interactive dry-run
+./setup.sh --pkgmgr apt    # brew | apt | dnf | pacman
+./setup.sh --undo          # reverse logged installs + symlinks
+./setup.sh --undo -n       # preview undo
+./setup.sh -h              # help
+```
+
 ## What’s installed
 
-Defined in [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) as `MY_SETUP`:
+Defined in [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh):
 
 | Item | Notes |
 |------|--------|
 | SFMono Nerd Font | Terminal / editor font |
 | Starship | Prompt (via this repo’s `.zshrc`) |
 | eza | `ls` replacement |
-| Warp | Terminal |
-| Cursor | Default editor |
+| Warp | Terminal (+ `.warp` config) |
+| **Cursor** | Default editor |
 | Zed | Fast editor (+ `.config/zed`) |
 | zsh + autosuggestions + syntax-highlighting + z | Shell plugins |
 | NVM | Node version manager |
-| Raycast | macOS only |
-| VS Code | Optional, when a recipe is available |
+| Raycast | macOS only (`MY_SETUP_MACOS`) |
+| VS Code | Optional when a recipe exists (`MY_SETUP_OPTIONAL`) |
 
-To change the stack, edit `MY_SETUP` / `MY_SETUP_MACOS` / `MY_SETUP_OPTIONAL` in `presets.sh`.
+To change the stack, edit `MY_SETUP`, `MY_SETUP_MACOS`, or `MY_SETUP_OPTIONAL` in `presets.sh`.
 
 ## Package managers
 
@@ -60,29 +69,85 @@ Homebrew is preferred so Mac and Linux stay close to the same workflow.
 Symlinked into `$HOME` (not copied):
 
 - `.zshrc`, `.zshenv`, `.config`
-- `.warp` when Warp is selected
-- `.config/zed` when Zed is selected
+- `.warp` when Warp is installed
+- `.config/zed` when Zed is installed
 
-Shell features land in `~/.dotfiles-setup/shell-features.zsh` and are sourced by [`.zshrc`](.zshrc).
+Shell feature flags are written to `~/.dotfiles-setup/shell-features.zsh` and sourced by [`.zshrc`](.zshrc).
+
+### Repo layout
+
+| Path | Role |
+|------|------|
+| [`.zshrc`](.zshrc) | Modular entrypoint (`DOTFILES_DIR`, features, aliases, plugins, Starship) |
+| [`.zshenv`](.zshenv) | Early env (NVM / Starship path helpers) |
+| [`.zsh/`](.zsh/) | `aliases.zsh`, `nvm.zsh`, `plugins.zsh`, `starship.zsh`, … |
+| [`.config/starship.toml`](.config/starship.toml) | Starship theme |
+| [`.config/zed/`](.config/zed/) | Zed settings / themes |
+| [`.warp/`](.warp/) | Warp settings / themes |
+| [`.scripts/setup.sh`](.scripts/setup.sh) | Installer entrypoint |
+| [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) | Default stack definition |
+| [`.scripts/catalog/`](.scripts/catalog/) | Install recipes (fonts, editors, shells, …) |
 
 ## Undo
 
 ```bash
 ./setup.sh --undo
 ./setup.sh --undo -n       # preview
+./setup.sh --undo --select # pick which logged actions to reverse
 ./setup.sh -c revert_setup
 ```
 
-Only actions logged by this script are reversed. `~/.gitconfig` is never deleted.
+Reverses actions recorded in the install log, including:
 
-## State
+- Package installs owned by this script
+- **Symlinks** created by setup (and restores backups when present)
+- Repo files / config blocks the script added (e.g. brew shellenv marker)
+
+`~/.gitconfig` is never deleted. Homebrew removal is opt-in when prompted.
+
+## Helper commands (`-c`)
+
+```bash
+./setup.sh -c move_dotfiles
+./setup.sh -c remove_git_origin_remote
+./setup.sh -c symlink_dotfile .zshrc
+./setup.sh -c unlink_dotfile .zshrc
+./setup.sh -c uninstall_nvm
+./setup.sh -c revert_setup
+```
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-h`, `--help` | Show help |
+| `-y`, `--yes` | Non-interactive (auto-confirm) |
+| `-n`, `--dry-run` | Preview plan; change nothing |
+| `--pkgmgr <name>` | `brew` \| `apt` \| `dnf` \| `pacman` |
+| `--undo` | Reverse logged actions |
+| `--select` | With `--undo`, choose which actions to reverse |
+| `-c <command>` | Run a helper (see above) |
+
+Legacy `--preset` / `--plan` / `--export-plan` flags are ignored (kept so older scripts don’t break).
+
+## State files
 
 ```text
 ~/.dotfiles-setup/
   install-log.jsonl      # undo source of truth
-  shell-features.zsh     # DOTFILES_DIR, Starship flags
+  shell-features.zsh     # DOTFILES_DIR, Starship / OMZ flags
   backups/               # pre-overwrite backups
+~/.dotfiles-setup.conf   # last package manager preference
 ```
+
+## Troubleshooting
+
+| Issue | What to try |
+|-------|-------------|
+| Prompt not showing Starship | Check `~/.dotfiles-setup/shell-features.zsh`, then restart the terminal |
+| Missing glyphs / icons | Set the terminal font to a Nerd Font (e.g. SFMono Nerd Font) |
+| Wrong repo path after moving | Re-run `./setup.sh` (or `-y`) so `DOTFILES_DIR` is rewritten |
+| Undo didn’t remove a symlink | It only removes paths still logged as symlinks; already-correct links skipped at install may not be logged |
 
 ## License
 

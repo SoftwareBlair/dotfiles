@@ -1,4 +1,4 @@
-# Oh My Zsh — only when enabled by setup wizard features
+# Oh My Zsh — only when enabled by setup features
 if [[ "${DOTFILES_ENABLE_OMZ:-0}" != "1" ]]; then
   return 0
 fi

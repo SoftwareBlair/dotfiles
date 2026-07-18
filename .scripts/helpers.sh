@@ -19,7 +19,7 @@ move_dotfiles() {
         mv "$DOTFILES_DIR" "$HOME/dotfiles"
         DOTFILES_DIR="$HOME/dotfiles"
         echo -e "${Green}Moved to $HOME/dotfiles${Off}"
-        echo -e "${Cyan}Tip: the wizard also works from any path without moving.${Off}"
+        echo -e "${Cyan}Tip: setup also works from any path without moving.${Off}"
     else
         echo -e "${Yellow}Dotfiles are already in ~/dotfiles.${Off}"
     fi
