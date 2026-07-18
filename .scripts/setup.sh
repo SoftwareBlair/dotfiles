@@ -39,7 +39,7 @@ usage() {
     cat <<'EOF'
 Setup my usual machine (macOS + Linux)
 
-Installs the same stack you use on improvements-while-using:
+Installs my usual stack:
   SFMono Nerd Font, Starship, eza, Warp, Cursor (default editor), Zed,
   zsh plugins, NVM, Raycast (macOS), VS Code when available —
   then links this repo’s configs.

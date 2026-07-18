@@ -4,7 +4,7 @@
 # Core tools you rely on every machine (Cursor is the default editor)
 MY_SETUP="sfmono_nerd starship eza warp cursor zed zsh nvm zsh_autosuggestions zsh_syntax_highlighting z"
 
-# macOS-only extras from your improvements branch
+# macOS-only extras
 MY_SETUP_MACOS="raycast"
 
 # Optional extras when a recipe is available for this OS / pkgmgr
