@@ -147,7 +147,7 @@ run_setup() {
 
     prompt_welcome "New machine setup" "$(platform_label)"
     prompt_info "Dotfiles: $DOTFILES_DIR"
-    prompt_info "Stack: improvements-while-using (SFMono, Cursor, Warp, Zed, Starship, eza, …)"
+    prompt_info "Stack: SFMono, Cursor, Warp, Zed, Starship, eza, …"
 
     if [[ "$DOTFILES_DIR" != "$HOME/dotfiles" && -z "${YES_MODE:-}" ]]; then
         if prompt_confirm "Move repo to ~/dotfiles? (optional — works from any path)" "false"; then
