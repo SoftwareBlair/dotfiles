@@ -97,6 +97,10 @@ run_undo() {
                     dry_run_add_step "Undo: $name" \
                         "remove # >>> dotfiles-setup >>> block from ~/.zprofile" \
                         "$HOME/.zprofile" "" "false" ""
+                elif [[ "$id" == "secrets-zprofile" ]]; then
+                    dry_run_add_step "Undo: $name" \
+                        "remove # >>> dotfiles-secrets >>> block from ~/.zprofile" \
+                        "$HOME/.zprofile" "" "false" ""
                 else
                     dry_run_add_step "Undo: $name" "(review) $commands" "$dest" "" "false" ""
                 fi
@@ -205,6 +209,9 @@ run_undo() {
                     # Remove marked block
                     sed -i.bak '/# >>> dotfiles-setup >>>/,/# <<< dotfiles-setup <<</d' "$HOME/.zprofile" 2>/dev/null || \
                         sed -i '' '/# >>> dotfiles-setup >>>/,/# <<< dotfiles-setup <<</d' "$HOME/.zprofile" 2>/dev/null || true
+                elif [[ "$id" == "secrets-zprofile" && -f "$HOME/.zprofile" ]]; then
+                    sed -i.bak '/# >>> dotfiles-secrets >>>/,/# <<< dotfiles-secrets <<</d' "$HOME/.zprofile" 2>/dev/null || \
+                        sed -i '' '/# >>> dotfiles-secrets >>>/,/# <<< dotfiles-secrets <<</d' "$HOME/.zprofile" 2>/dev/null || true
                 fi
                 ;;
             upgrade)

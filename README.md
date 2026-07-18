@@ -89,17 +89,16 @@ Symlinked into `$HOME` (not copied):
 
 Shell feature flags are written to `~/.dotfiles-setup/shell-features.zsh` and sourced by [`.zshrc`](.zshrc).
 
-### Secrets (`.zprofile`)
+### Secrets (`~/.zprofile`)
 
-Setup can create an untracked **`.zprofile`** in the repo root for local secrets (API keys, tokens). It is listed in [`.gitignore`](.gitignore) so it is never committed, and is sourced from [`.zshenv`](.zshenv) when present.
+Setup can create or extend **`~/.zprofile`** on your machine for local secrets (API keys, tokens). That file lives in your home directory — outside this repo — so it is never committed with your dotfiles.
 
 ### Repo layout
 
 | Path | Role |
 |------|------|
 | [`.zshrc`](.zshrc) | Modular entrypoint (`DOTFILES_DIR`, features, aliases, plugins, Starship) |
-| [`.zshenv`](.zshenv) | Early env (NVM / Starship path helpers; sources local `.zprofile`) |
-| `.zprofile` | Local secrets (gitignored — created by setup if you opt in) |
+| [`.zshenv`](.zshenv) | Early env (NVM / Starship path helpers) |
 | [`.zsh/`](.zsh/) | `aliases.zsh`, `nvm.zsh`, `plugins.zsh`, `starship.zsh`, … |
 | [`.config/starship.toml`](.config/starship.toml) | Starship theme |
 | [`.config/zed/`](.config/zed/) | Zed settings / themes |

@@ -2,9 +2,6 @@
 .vscode
 .gitconfig
 
-# Local secrets — never commit
-.zprofile
-
 .config/*
 !.config/starship.toml
 

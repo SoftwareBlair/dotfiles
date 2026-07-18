@@ -262,58 +262,64 @@ install_dotfile_path() {
     fi
 }
 
-# Offer an untracked repo-root .zprofile for local secrets (API keys, tokens)
+# Offer ~/.zprofile on the user's machine for local secrets (API keys, tokens)
 offer_secrets_zprofile() {
-    local df secrets_file
-    df="$(resolve_dotfiles_dir)"
-    secrets_file="$df/.zprofile"
+    local secrets_file="$HOME/.zprofile"
+    local marker_start="# >>> dotfiles-secrets >>>"
+    local marker_end="# <<< dotfiles-secrets <<<"
 
-    if [[ -f "$secrets_file" ]]; then
-        prompt_info "Secrets file already present: $secrets_file (gitignored)."
-        report_config "Secrets .zprofile already exists (gitignored)" 2>/dev/null || true
+    if [[ -f "$secrets_file" ]] && grep -qF "$marker_start" "$secrets_file" 2>/dev/null; then
+        prompt_info "Secrets section already present in $secrets_file."
+        report_config "Secrets section already in ~/.zprofile" 2>/dev/null || true
         return 0
     fi
 
     if dry_run_is_active; then
-        dry_run_add_step "Create secrets .zprofile" \
-            "write $secrets_file (gitignored template for API keys / tokens)" \
-            "$secrets_file" "sourced by .zshenv; never committed" "false" ""
+        if [[ -f "$secrets_file" ]]; then
+            dry_run_add_step "Add secrets section to ~/.zprofile" \
+                "append $marker_start … $marker_end block for API keys / tokens" \
+                "$secrets_file" "lives on the machine, outside the repo" "false" ""
+        else
+            dry_run_add_step "Create ~/.zprofile for secrets" \
+                "write $secrets_file with secrets template for API keys / tokens" \
+                "$secrets_file" "lives on the machine, outside the repo" "false" ""
+        fi
         return 0
     fi
 
     prompt_style "── Local secrets ──"
-    prompt_info "You can keep API keys and tokens in a repo-root .zprofile that git ignores."
-    if ! prompt_confirm "Create an untracked .zprofile for secrets?" "true"; then
-        prompt_warn "Skipping secrets .zprofile."
-        report_skip "secrets .zprofile" 2>/dev/null || true
-        return 0
+    prompt_info "Keep API keys and tokens in ~/.zprofile on this machine (outside the repo)."
+    if [[ -f "$secrets_file" ]]; then
+        if ! prompt_confirm "Add a secrets section to ~/.zprofile?" "true"; then
+            prompt_warn "Skipping secrets .zprofile."
+            report_skip "secrets ~/.zprofile" 2>/dev/null || true
+            return 0
+        fi
+    else
+        if ! prompt_confirm "Create ~/.zprofile for secrets?" "true"; then
+            prompt_warn "Skipping secrets .zprofile."
+            report_skip "secrets ~/.zprofile" 2>/dev/null || true
+            return 0
+        fi
     fi
 
-    cat > "$secrets_file" <<'EOF'
-# Local secrets — gitignored (never commit this file)
-# Sourced early via .zshenv when DOTFILES_DIR is set.
-#
-# Examples:
-# export OPENAI_API_KEY="…"
-# export ANTHROPIC_API_KEY="…"
-# export GH_TOKEN="…"
-EOF
+    {
+        echo ""
+        echo "$marker_start"
+        echo "# Local secrets — lives in \$HOME (not in the dotfiles repo)"
+        echo "# Examples:"
+        echo "# export OPENAI_API_KEY=\"…\""
+        echo "# export ANTHROPIC_API_KEY=\"…\""
+        echo "# export GH_TOKEN=\"…\""
+        echo "$marker_end"
+    } >> "$secrets_file"
 
-    # Ensure .gitignore covers it (idempotent)
-    local gi="$df/.gitignore"
-    if [[ -f "$gi" ]] && ! grep -qxF '.zprofile' "$gi" 2>/dev/null; then
-        {
-            echo ""
-            echo "# Local secrets — never commit"
-            echo ".zprofile"
-        } >> "$gi"
-    fi
-
-    state_log_install "secrets-zprofile" "Secrets .zprofile" "config" \
-        "write $secrets_file" "$secrets_file" "gitignored local secrets" "" "" ""
-    prompt_success "Created $secrets_file (gitignored)."
-    prompt_info "Add exports there, then restart your terminal (or: source $secrets_file)."
-    report_config "Created gitignored .zprofile for secrets" 2>/dev/null || true
+    state_log_install "secrets-zprofile" "Secrets ~/.zprofile" "config" \
+        "append secrets block to $secrets_file" "$secrets_file" \
+        "$secrets_file" "" "" ""
+    prompt_success "Secrets ready in $secrets_file."
+    prompt_info "Add your exports inside the marked block, then restart your terminal."
+    report_config "Secrets section in ~/.zprofile" 2>/dev/null || true
 }
 
 print_final_report() {
@@ -347,8 +353,8 @@ print_final_report() {
         echo "  2. Set your terminal font to a Nerd Font (e.g. SFMono Nerd Font)"
     fi
     echo "  3. Review: $STATE_DIR/shell-features.zsh"
-    if [[ -f "$(resolve_dotfiles_dir)/.zprofile" ]]; then
-        echo "  4. Add secrets to $(resolve_dotfiles_dir)/.zprofile (gitignored)"
+    if [[ -f "$HOME/.zprofile" ]] && grep -qF "# >>> dotfiles-secrets >>>" "$HOME/.zprofile" 2>/dev/null; then
+        echo "  4. Add secrets to ~/.zprofile (outside the repo)"
         echo "  5. Undo later: ./setup.sh --undo"
     else
         echo "  4. Undo later: ./setup.sh --undo"
