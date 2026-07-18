@@ -236,26 +236,72 @@ choose_package_manager() {
         return 0
     fi
 
+    # Prefer native package manager as default on Linux; brew on macOS
+    local default_mgr="brew"
+    if [[ "$PLATFORM" == "linux" ]]; then
+        for m in apt dnf pacman; do
+            if printf '%s\n' "${options[@]}" | grep -qx "$m"; then
+                default_mgr="$m"
+                break
+            fi
+        done
+    fi
+
     local labels=()
     local m
     for m in "${options[@]}"; do
+        local label=""
         case "$m" in
-            brew) labels+=("Homebrew (brew)") ;;
-            apt) labels+=("apt (Debian/Ubuntu)") ;;
-            dnf) labels+=("dnf (Fedora/RHEL)") ;;
-            pacman) labels+=("pacman (Arch)") ;;
-            *) labels+=("$m") ;;
+            brew)
+                if [[ "$m" == "$default_mgr" ]]; then
+                    label="Homebrew (brew)  [default]"
+                else
+                    label="Homebrew (brew) — same formulas on Linux via Linuxbrew"
+                fi
+                ;;
+            apt)
+                if [[ "$m" == "$default_mgr" ]]; then
+                    label="apt (Debian/Ubuntu)  [default]"
+                else
+                    label="apt — Debian/Ubuntu system packages"
+                fi
+                ;;
+            dnf)
+                if [[ "$m" == "$default_mgr" ]]; then
+                    label="dnf (Fedora/RHEL)  [default]"
+                else
+                    label="dnf — Fedora/RHEL system packages"
+                fi
+                ;;
+            pacman)
+                if [[ "$m" == "$default_mgr" ]]; then
+                    label="pacman (Arch)  [default]"
+                else
+                    label="pacman — Arch system packages"
+                fi
+                ;;
+            *) label="$m" ;;
         esac
+        labels+=("$label")
+    done
+
+    # Put default first so fallback / YES_MODE picks it
+    local ordered=()
+    for label in "${labels[@]}"; do
+        [[ "$label" == *"[default]"* ]] && ordered+=("$label")
+    done
+    for label in "${labels[@]}"; do
+        [[ "$label" != *"[default]"* ]] && ordered+=("$label")
     done
 
     local choice
-    choice="$(prompt_choose_one "How would you like to install packages?" "${labels[@]}")"
+    choice="$(prompt_choose_one "How would you like to install packages?" "${ordered[@]}")"
     case "$choice" in
         Homebrew*) PKG_MGR="brew" ;;
         apt*) PKG_MGR="apt" ;;
         dnf*) PKG_MGR="dnf" ;;
         pacman*) PKG_MGR="pacman" ;;
-        *) PKG_MGR="${options[0]}" ;;
+        *) PKG_MGR="$default_mgr" ;;
     esac
 }
 
@@ -320,7 +366,8 @@ collect_shell() {
         return 0
     fi
 
-    labels=("Skip — keep current shell" "${labels[@]}")
+    # zsh catalog label already includes [default]; offer skip with description
+    labels+=("Skip — keep your current login shell")
     local choice
     choice="$(prompt_choose_one "Choose a shell (zsh only for now)" "${labels[@]}")"
     if [[ "$choice" == Skip* ]]; then
@@ -459,7 +506,10 @@ run_wizard() {
         if dry_run_is_active; then
             action="Preview plan"
         else
-            action="$(prompt_choose_one "What next?" "Preview install plan" "Install now" "Cancel")"
+            action="$(prompt_choose_one "What next?" \
+                "Preview install plan  [default]" \
+                "Install now — apply changes immediately" \
+                "Cancel — exit without installing")"
         fi
     elif dry_run_is_active; then
         action="Preview plan"

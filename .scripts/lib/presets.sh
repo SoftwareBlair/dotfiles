@@ -10,12 +10,12 @@ PRESET_NAME=""
 PRESET_IDS=""
 
 preset_list_labels() {
-    echo "Personal favorites (SFMono, Warp, Zed, zsh, Starship, eza, …)"
-    echo "Minimal (zsh + Starship + eza)"
-    echo "Full catalog (everything available)"
-    echo "Custom (pick each category)"
+    echo "Personal favorites  [default]"
+    echo "Minimal — lean zsh + Starship + eza"
+    echo "Full catalog — everything available for this OS / package manager"
+    echo "Custom — pick fonts, tools, and configs yourself"
     if [[ -n "${LAST_PRESET:-}" && "$LAST_PRESET" != "custom" ]]; then
-        echo "Last used ($LAST_PRESET)"
+        echo "Last used ($LAST_PRESET) — restore your previous preset"
     fi
 }
 

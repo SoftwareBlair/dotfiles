@@ -58,6 +58,15 @@ Restart your terminal when finished.
 9. Preview plan or install  
 10. Writes shell features + end-of-run report  
 
+### Defaults in pickers
+
+Catalog options from the **personal** preset are marked `[default]` and pre-selected in multi-select menus. Non-default options show a short description after an em dash, for example:
+
+```text
+SFMono Nerd Font  [default]
+Hack Nerd Font — Classic coding font with icons
+```
+
 ### Starship & Oh My Zsh configuration
 
 | Mode | Behavior |

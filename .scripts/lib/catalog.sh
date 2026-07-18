@@ -64,16 +64,40 @@ catalog_available() {
     return 1
 }
 
+# Items in the personal preset are treated as "defaults" in pickers
+catalog_is_default() {
+    local id="$1"
+    local defaults="${DEFAULT_CATALOG_IDS:-$PRESET_PERSONAL}"
+    [[ " $defaults " == *" $id "* ]]
+}
+
+# Label for pickers:
+#   defaults → "Name  [default]"
+#   others   → "Name — short description"
 catalog_label() {
     local id="$1"
     local name desc
     name="$(catalog_get "$id" name)"
     desc="$(catalog_get "$id" description)"
-    if [[ -n "$desc" ]]; then
-        echo "$name — $desc"
+    if catalog_is_default "$id"; then
+        echo "${name}  [default]"
+    elif [[ -n "$desc" ]]; then
+        echo "${name} — ${desc}"
     else
         echo "$name"
     fi
+}
+
+# Strip picker decorations to get the bare catalog name
+catalog_label_name() {
+    local label="$1"
+    # Remove "  [default]" suffix
+    label="${label%  \[default\]}"
+    # Remove " — description" suffix
+    label="${label%% — *}"
+    # Trim trailing spaces
+    label="${label%"${label##*[![:space:]]}"}"
+    printf '%s' "$label"
 }
 
 # Resolve label back to id
@@ -86,8 +110,9 @@ catalog_id_from_label() {
             return 0
         fi
     done
-    # Fallback: match by name prefix
-    local name="${label%% — *}"
+    # Fallback: match by bare name
+    local name
+    name="$(catalog_label_name "$label")"
     for id in $CATALOG_IDS; do
         if [[ "$(catalog_get "$id" name)" == "$name" ]]; then
             echo "$id"

@@ -141,40 +141,58 @@ prompt_input() {
 }
 
 # prompt_choose_one "Header" option1 option2 ...
-# Prints selected option to stdout
+# Prints selected option to stdout.
+# Prefer an option marked [default] when present.
 prompt_choose_one() {
     local header="$1"
     shift
     local options=("$@")
 
+    local default_idx=0
+    local i
+    for i in "${!options[@]}"; do
+        if [[ "${options[$i]}" == *"[default]"* ]]; then
+            default_idx=$i
+            break
+        fi
+    done
+
     if [[ -n "${YES_MODE:-}" ]]; then
-        echo "${options[0]}"
+        echo "${options[$default_idx]}"
         return 0
     fi
 
     if _use_gum; then
-        printf '%s\n' "${options[@]}" | gum choose --header "$header"
+        # gum highlights the first item; put default first for visibility
+        local ordered=()
+        ordered+=("${options[$default_idx]}")
+        for i in "${!options[@]}"; do
+            [[ "$i" -eq "$default_idx" ]] && continue
+            ordered+=("${options[$i]}")
+        done
+        printf '%s\n' "${ordered[@]}" | gum choose --header "$header"
         return 0
     fi
 
     echo -e "${Purple}${header}${Off}"
-    local i=1
+    local n=1
     for opt in "${options[@]}"; do
-        echo "  $i) $opt"
-        i=$((i + 1))
+        echo "  $n) $opt"
+        n=$((n + 1))
     done
     local choice
-    read -r -p "Enter number [1]: " choice
-    choice="${choice:-1}"
+    read -r -p "Enter number [$((default_idx + 1))]: " choice
+    choice="${choice:-$((default_idx + 1))}"
     if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 && "$choice" -le "${#options[@]}" ]]; then
         echo "${options[$((choice - 1))]}"
     else
-        echo "${options[0]}"
+        echo "${options[$default_idx]}"
     fi
 }
 
 # prompt_choose_many "Header" option1 option2 ...
-# Prints selected options one per line
+# Prints selected options one per line.
+# Options marked with "[default]" are pre-selected in gum / suggested in fallback.
 prompt_choose_many() {
     local header="$1"
     shift
@@ -185,30 +203,70 @@ prompt_choose_many() {
     fi
 
     if [[ -n "${YES_MODE:-}" ]]; then
-        printf '%s\n' "${options[@]}"
+        # Prefer defaults when present; otherwise all
+        local defaults=()
+        local opt
+        for opt in "${options[@]}"; do
+            [[ "$opt" == *"[default]"* ]] && defaults+=("$opt")
+        done
+        if [[ ${#defaults[@]} -gt 0 ]]; then
+            printf '%s\n' "${defaults[@]}"
+        else
+            printf '%s\n' "${options[@]}"
+        fi
         return 0
     fi
 
     if _use_gum; then
-        printf '%s\n' "${options[@]}" | gum choose --no-limit --header "$header"
+        local gum_args=(choose --no-limit --header "$header")
+        for opt in "${options[@]}"; do
+            if [[ "$opt" == *"[default]"* ]]; then
+                gum_args+=(--selected "$opt")
+            fi
+        done
+        printf '%s\n' "${options[@]}" | gum "${gum_args[@]}"
         return 0
     fi
 
     echo -e "${Purple}${header}${Off}"
-    echo "(Enter comma-separated numbers, or 'all' / 'none')"
+    echo "(Enter comma-separated numbers, 'defaults', 'all', or 'none')"
     local i=1
+    local default_nums=()
     for opt in "${options[@]}"; do
-        echo "  $i) $opt"
+        if [[ "$opt" == *"[default]"* ]]; then
+            echo "  $i) $opt"
+            default_nums+=("$i")
+        else
+            echo "  $i) $opt"
+        fi
         i=$((i + 1))
     done
+    local default_hint="all"
+    if [[ ${#default_nums[@]} -gt 0 ]]; then
+        local IFS=','
+        default_hint="defaults (${default_nums[*]})"
+        unset IFS
+    fi
     local choice
-    read -r -p "Selection [all]: " choice
-    choice="${choice:-all}"
+    read -r -p "Selection [$default_hint]: " choice
+    if [[ -z "$choice" ]]; then
+        if [[ ${#default_nums[@]} -gt 0 ]]; then
+            choice="defaults"
+        else
+            choice="all"
+        fi
+    fi
     if [[ "$choice" == "all" ]]; then
         printf '%s\n' "${options[@]}"
         return 0
     fi
     if [[ "$choice" == "none" ]]; then
+        return 0
+    fi
+    if [[ "$choice" == "defaults" ]]; then
+        for opt in "${options[@]}"; do
+            [[ "$opt" == *"[default]"* ]] && echo "$opt"
+        done
         return 0
     fi
     local IFS=','

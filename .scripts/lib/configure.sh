@@ -115,14 +115,14 @@ resolve_shell_profile_conflict() {
 
     local choice
     choice="$(prompt_choose_one "How should your zsh profile work?" \
-        "Starship + this repo's .zshrc (recommended; OMZ installed but not loaded)" \
-        "Oh My Zsh as primary (stock OMZ theme/plugins)" \
-        "Merged (load OMZ plugins, use Starship as prompt)")"
+        "Starship + this repo's .zshrc  [default]" \
+        "Oh My Zsh as primary — stock OMZ theme and plugins" \
+        "Merged — OMZ plugins with Starship as the prompt")"
 
     case "$choice" in
-        Oh\ My\ Zsh*) SHELL_PROFILE_MODE="oh-my-zsh" ;;
+        Oh\ My\ Zsh*|Oh*) SHELL_PROFILE_MODE="oh-my-zsh" ;;
         Merged*) SHELL_PROFILE_MODE="merged" ;;
-        *) SHELL_PROFILE_MODE="starship" ;;
+        Starship*|*) SHELL_PROFILE_MODE="starship" ;;
     esac
 }
 
@@ -214,8 +214,8 @@ choose_link_mode() {
     fi
     local choice
     choice="$(prompt_choose_one "How should dotfiles be linked into \$HOME?" \
-        "Symlink (recommended — edits track the repo)" \
-        "Copy (standalone copies into \$HOME)")"
+        "Symlink  [default]" \
+        "Copy — standalone copies into \$HOME (edits do not track the repo)")"
     case "$choice" in
         Copy*) LINK_MODE="copy" ;;
         *) LINK_MODE="symlink" ;;
