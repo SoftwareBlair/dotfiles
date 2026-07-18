@@ -1,12 +1,36 @@
-export NVM_DIR="$HOME/.nvm"
-[ -s "$(brew --prefix nvm)/nvm.sh" ] && \. "$(brew --prefix nvm)/nvm.sh"
-[ -s "$(brew --prefix nvm)/etc/bash_completion" ] && \. "$(brew --prefix nvm)/etc/bash_completion"
+# NVM — support official install (~/.nvm) and Homebrew
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+
+_nvm_script=""
+if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+  _nvm_script="$NVM_DIR/nvm.sh"
+elif command -v brew >/dev/null 2>&1; then
+  _brew_nvm="$(brew --prefix nvm 2>/dev/null)"
+  if [[ -n "$_brew_nvm" && -s "$_brew_nvm/nvm.sh" ]]; then
+    _nvm_script="$_brew_nvm/nvm.sh"
+    export NVM_DIR="$_brew_nvm"
+  fi
+fi
+
+if [[ -n "$_nvm_script" ]]; then
+  # shellcheck disable=SC1090
+  . "$_nvm_script"
+  if [[ -s "${_nvm_script%/nvm.sh}/bash_completion" ]]; then
+    # shellcheck disable=SC1090
+    . "${_nvm_script%/nvm.sh}/bash_completion"
+  elif [[ -s "$NVM_DIR/bash_completion" ]]; then
+    # shellcheck disable=SC1090
+    . "$NVM_DIR/bash_completion"
+  fi
+fi
+unset _nvm_script _brew_nvm
 
 autoload -U add-zsh-hook
 
 load-nvmrc() {
+  command -v nvm >/dev/null 2>&1 || return 0
   local nvmrc_path
-  nvmrc_path="$(nvm_find_nvmrc)"
+  nvmrc_path="$(nvm_find_nvmrc 2>/dev/null)" || return 0
 
   if [ -n "$nvmrc_path" ]; then
     local nvmrc_node_version
@@ -17,7 +41,7 @@ load-nvmrc() {
     elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
       nvm use
     fi
-  elif [ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ] && [ "$(nvm version)" != "$(nvm version default)" ]; then
+  elif [ -n "$(PWD=$OLDPWD nvm_find_nvmrc 2>/dev/null)" ] && [ "$(nvm version)" != "$(nvm version default)" ]; then
     echo "Reverting to nvm default version"
     nvm use default
   fi
