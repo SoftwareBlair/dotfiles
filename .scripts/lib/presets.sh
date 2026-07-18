@@ -1,82 +1,37 @@
 #!/bin/bash
-# Curated install presets
+# Your usual setup — aligned with improvements-while-using (+ SFMono, Zed)
 
-# Preset IDs (space-separated catalog ids)
-PRESET_MINIMAL="zsh starship eza"
-PRESET_PERSONAL="sfmono_nerd vscode warp zed zsh starship eza nvm zsh_autosuggestions zsh_syntax_highlighting fzf zoxide"
-PRESET_FULL="" # computed: all available for current platform/pkgmgr
+# Core tools you rely on every machine
+MY_SETUP="sfmono_nerd starship eza warp zed zsh nvm zsh_autosuggestions zsh_syntax_highlighting z"
 
-PRESET_NAME=""
+# macOS-only extras from your improvements branch
+MY_SETUP_MACOS="raycast"
+
+# Optional but commonly used with your git/editor flow
+MY_SETUP_OPTIONAL="vscode"
+
+PRESET_NAME="mine"
 PRESET_IDS=""
 
-preset_list_labels() {
-    echo "Personal favorites  [default]"
-    echo "Minimal — lean zsh + Starship + eza"
-    echo "Full catalog — everything available for this OS / package manager"
-    echo "Custom — pick fonts, tools, and configs yourself"
-    if [[ -n "${LAST_PRESET:-}" && "$LAST_PRESET" != "custom" ]]; then
-        echo "Last used ($LAST_PRESET) — restore your previous preset"
+my_setup_ids() {
+    local ids="$MY_SETUP"
+    if [[ "${PLATFORM:-}" == "macos" ]]; then
+        ids="$ids $MY_SETUP_MACOS"
     fi
+    # Include optional items that are available
+    local id
+    for id in $MY_SETUP_OPTIONAL; do
+        if catalog_available "$id" 2>/dev/null; then
+            ids="$ids $id"
+        fi
+    done
+    echo "$ids"
 }
 
-preset_ids_for() {
-    local name="$1"
-    case "$name" in
-        minimal) echo "$PRESET_MINIMAL" ;;
-        personal) echo "$PRESET_PERSONAL" ;;
-        full)
-            local id all=""
-            for id in $CATALOG_IDS; do
-                catalog_available "$id" || continue
-                all="${all:+$all }$id"
-            done
-            echo "$all"
-            ;;
-        last)
-            echo "${LAST_SELECTION_IDS:-$PRESET_PERSONAL}"
-            ;;
-        *) echo "" ;;
-    esac
-}
-
-choose_preset() {
-    if [[ -n "${PRESET_FLAG:-}" ]]; then
-        PRESET_NAME="$PRESET_FLAG"
-        PRESET_IDS="$(preset_ids_for "$PRESET_NAME")"
-        return 0
-    fi
-
-    if [[ -n "${YES_MODE:-}" ]]; then
-        PRESET_NAME="${PRESET_NAME:-personal}"
-        PRESET_IDS="$(preset_ids_for "$PRESET_NAME")"
-        return 0
-    fi
-
-    local labels=()
-    while IFS= read -r line; do
-        [[ -n "$line" ]] && labels+=("$line")
-    done < <(preset_list_labels)
-
-    local choice
-    choice="$(prompt_choose_one "Choose a setup preset" "${labels[@]}")"
-
-    case "$choice" in
-        Personal*) PRESET_NAME="personal" ;;
-        Minimal*) PRESET_NAME="minimal" ;;
-        Full*) PRESET_NAME="full" ;;
-        Last*) PRESET_NAME="last" ;;
-        Custom*|*) PRESET_NAME="custom" ;;
-    esac
-
-    if [[ "$PRESET_NAME" == "custom" ]]; then
-        PRESET_IDS=""
-    else
-        PRESET_IDS="$(preset_ids_for "$PRESET_NAME")"
-    fi
-}
-
-# Apply preset IDs into SELECTED_IDS / SELECTED_SHELL (filter unavailable)
-apply_preset_selections() {
+# Apply into SELECTED_IDS / SELECTED_SHELL
+apply_my_setup() {
+    PRESET_NAME="mine"
+    PRESET_IDS="$(my_setup_ids)"
     installer_clear_selections
     SELECTED_SHELL=""
     local id
@@ -89,57 +44,28 @@ apply_preset_selections() {
     done
 }
 
-# Dependency suggestions: returns extra ids that should be recommended
-suggest_dependencies() {
+print_my_setup_summary() {
     local id
-    local suggestions=""
+    echo "  Your usual setup:"
     for id in "${SELECTED_IDS[@]}"; do
-        case "$id" in
-            starship)
-                # Suggest a nerd font if none selected
-                local has_font=false
-                local s
-                for s in "${SELECTED_IDS[@]}"; do
-                    [[ "$(catalog_get "$s" category)" == "fonts" ]] && has_font=true
-                done
-                if [[ "$has_font" == "false" ]]; then
-                    suggestions="${suggestions:+$suggestions }sfmono_nerd"
-                fi
-                ;;
-            oh_my_zsh)
-                [[ " ${SELECTED_IDS[*]} " != *" zsh "* ]] && suggestions="${suggestions:+$suggestions }zsh"
-                ;;
-        esac
+        echo "    • $(catalog_get "$id" name)"
     done
-    echo "$suggestions"
+    echo "    • symlink .zshrc .zshenv .config .warp .config/zed (as applicable)"
+    echo "    • Starship + zsh plugins via this repo’s configs"
 }
 
-prompt_dependency_hints() {
-    local deps
-    deps="$(suggest_dependencies)"
-    [[ -z "$deps" ]] && return 0
-
-    local labels=()
-    local id
-    for id in $deps; do
-        catalog_available "$id" || continue
-        [[ " ${SELECTED_IDS[*]} " == *" $id "* ]] && continue
-        labels+=("$(catalog_label "$id")")
-    done
-    [[ ${#labels[@]} -eq 0 ]] && return 0
-
-    prompt_style "── Suggested add-ons ──"
-    prompt_info "Based on your selections, these are recommended:"
-    local picked
-    if [[ -n "${YES_MODE:-}" ]]; then
-        picked="$(printf '%s\n' "${labels[@]}")"
-    else
-        picked="$(prompt_choose_many "Add recommended items? (optional)" "${labels[@]}")"
-    fi
-    while IFS= read -r label || [[ -n "$label" ]]; do
-        [[ -z "$label" ]] && continue
-        local cid
-        cid="$(catalog_id_from_label "$label")" || continue
-        installer_add_selection "$cid"
-    done <<< "$picked"
+# Kept for any leftover callers
+choose_preset() {
+    apply_my_setup
 }
+
+apply_preset_selections() {
+    apply_my_setup
+}
+
+preset_ids_for() {
+    my_setup_ids
+}
+
+suggest_dependencies() { echo ""; }
+prompt_dependency_hints() { return 0; }

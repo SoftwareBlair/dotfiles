@@ -20,9 +20,8 @@ installer_is_installed() {
     eval "$check" &>/dev/null
 }
 
-# Build dry-run or execute plan for selected IDs
+# Build dry-run plan steps for selected IDs (caller should dry_run_begin_plan first)
 installer_plan_selections() {
-    dry_run_begin_plan
     local id
     for id in "${SELECTED_IDS[@]}"; do
         local name cmd dest side_effects requires_sudo

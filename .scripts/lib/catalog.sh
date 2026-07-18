@@ -64,10 +64,13 @@ catalog_available() {
     return 1
 }
 
-# Items in the personal preset are treated as "defaults" in pickers
+# Items in MY_SETUP are treated as "defaults" in pickers
 catalog_is_default() {
     local id="$1"
-    local defaults="${DEFAULT_CATALOG_IDS:-$PRESET_PERSONAL}"
+    local defaults="${DEFAULT_CATALOG_IDS:-}"
+    if [[ -z "$defaults" && -n "${MY_SETUP:-}" ]]; then
+        defaults="$MY_SETUP ${MY_SETUP_MACOS:-} ${MY_SETUP_OPTIONAL:-}"
+    fi
     [[ " $defaults " == *" $id "* ]]
 }
 
