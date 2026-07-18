@@ -172,6 +172,88 @@ pkgmgr_upgrade() {
     esac
 }
 
+# Refresh package metadata once per run (before outdated checks)
+PKGMGR_REFRESHED=""
+
+pkgmgr_refresh_metadata() {
+    [[ -n "${PKGMGR_REFRESHED:-}" ]] && return 0
+    PKGMGR_REFRESHED=1
+
+    case "${PKG_MGR:-}" in
+        brew)
+            if ! command -v brew &>/dev/null; then
+                return 0
+            fi
+            if dry_run_is_active; then
+                return 0
+            fi
+            prompt_info "Refreshing Homebrew formulae/casks…"
+            brew update --quiet 2>/dev/null || brew update || true
+            ;;
+        apt)
+            if dry_run_is_active; then
+                return 0
+            fi
+            prompt_info "Refreshing apt package lists…"
+            sudo apt-get update -qq 2>/dev/null || sudo apt-get update || true
+            ;;
+        dnf)
+            # dnf check-update refreshes metadata as needed
+            ;;
+        pacman)
+            if dry_run_is_active; then
+                return 0
+            fi
+            prompt_info "Refreshing pacman sync database…"
+            sudo pacman -Sy --noconfirm 2>/dev/null || true
+            ;;
+    esac
+}
+
+# kind: cask | formula | native
+# Returns 0 when an update is available for pkg
+pkgmgr_package_outdated() {
+    local kind="$1"
+    local pkg="$2"
+    [[ -z "$pkg" ]] && return 1
+
+    case "${PKG_MGR:-}" in
+        brew)
+            command -v brew &>/dev/null || return 1
+            if [[ "$kind" == "cask" ]]; then
+                brew list --cask "$pkg" &>/dev/null || return 1
+                brew outdated --cask --quiet "$pkg" 2>/dev/null | grep -qx "$pkg"
+            else
+                brew list --formula "$pkg" &>/dev/null || return 1
+                brew outdated --formula --quiet "$pkg" 2>/dev/null | grep -qx "$pkg"
+            fi
+            ;;
+        apt)
+            dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed" || return 1
+            local installed candidate
+            installed="$(apt-cache policy "$pkg" 2>/dev/null | awk '/Installed:/ {print $2; exit}')"
+            candidate="$(apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2; exit}')"
+            [[ -n "$installed" && -n "$candidate" ]] || return 1
+            [[ "$installed" != "(none)" && "$candidate" != "(none)" ]] || return 1
+            [[ "$installed" != "$candidate" ]]
+            ;;
+        dnf)
+            rpm -q "$pkg" &>/dev/null || return 1
+            # dnf check-update: 100 = updates available, 0 = none, 1 = error
+            dnf check-update "$pkg" &>/dev/null
+            local ec=$?
+            [[ "$ec" -eq 100 ]]
+            ;;
+        pacman)
+            pacman -Q "$pkg" &>/dev/null || return 1
+            pacman -Qu "$pkg" &>/dev/null
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 # Setup Cursor apt repo (https://downloads.cursor.com/aptrepo)
 setup_cursor_apt_repo() {
     local cmd='sudo apt-get install -y curl gpg && sudo mkdir -p /etc/apt/keyrings && curl -fsSL https://downloads.cursor.com/keys/anysphere.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/cursor.gpg > /dev/null && echo "deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/cursor.gpg] https://downloads.cursor.com/aptrepo stable main" | sudo tee /etc/apt/sources.list.d/cursor.list > /dev/null && sudo apt-get update'

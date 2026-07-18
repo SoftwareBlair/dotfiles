@@ -185,6 +185,135 @@ catalog_install_dest() {
     echo "$dest"
 }
 
+# Resolve package manager package for update checks.
+# Prints: kind|package  where kind is cask|formula|native
+# Returns 1 when this item can't be checked for updates under PKG_MGR.
+catalog_pkg_spec() {
+    local id="$1"
+    local explicit pkg cmd
+
+    explicit="$(catalog_get "$id" "pkg_${PKG_MGR}")"
+    if [[ -n "$explicit" ]]; then
+        echo "native|$explicit"
+        return 0
+    fi
+
+    if [[ "${PKG_MGR:-}" == "brew" ]]; then
+        explicit="$(catalog_get "$id" pkg_brew_cask)"
+        if [[ -n "$explicit" ]]; then
+            echo "cask|$explicit"
+            return 0
+        fi
+        explicit="$(catalog_get "$id" pkg_brew)"
+        if [[ -n "$explicit" ]]; then
+            echo "formula|$explicit"
+            return 0
+        fi
+    fi
+
+    cmd="$(catalog_resolve_install_cmd "$id")"
+    [[ -z "$cmd" ]] && return 1
+
+    if echo "$cmd" | grep -q 'brew install --cask '; then
+        pkg="$(echo "$cmd" | sed -n 's/.*brew install --cask \([^ |;&]*\).*/\1/p' | head -1)"
+        if [[ -n "$pkg" ]]; then
+            echo "cask|$pkg"
+            return 0
+        fi
+    fi
+
+    if echo "$cmd" | grep -q 'brew install '; then
+        pkg="$(echo "$cmd" | sed -n 's/.*brew install \([^ |;&]*\).*/\1/p' | head -1)"
+        if [[ -n "$pkg" && "$pkg" != "--cask" ]]; then
+            echo "formula|$pkg"
+            return 0
+        fi
+    fi
+
+    if echo "$cmd" | grep -q 'apt-get install'; then
+        pkg="$(echo "$cmd" | sed -n 's/.*apt-get install -y \([^ |;&]*\).*/\1/p' | head -1)"
+        if [[ -z "$pkg" ]]; then
+            pkg="$(echo "$cmd" | sed -n 's/.*apt-get install \([^ |;&]*\).*/\1/p' | head -1)"
+        fi
+        if [[ -n "$pkg" && "$pkg" != "-y" ]]; then
+            echo "native|$pkg"
+            return 0
+        fi
+    fi
+
+    if echo "$cmd" | grep -q 'dnf install'; then
+        pkg="$(echo "$cmd" | sed -n 's/.*dnf install -y \([^ |;&]*\).*/\1/p' | head -1)"
+        if [[ -z "$pkg" ]]; then
+            pkg="$(echo "$cmd" | sed -n 's/.*dnf install \([^ |;&]*\).*/\1/p' | head -1)"
+        fi
+        if [[ -n "$pkg" && "$pkg" != "-y" ]]; then
+            echo "native|$pkg"
+            return 0
+        fi
+    fi
+
+    if echo "$cmd" | grep -q 'pacman -S'; then
+        pkg="$(echo "$cmd" | sed -n 's/.*pacman -S --noconfirm \([^ |;&]*\).*/\1/p' | head -1)"
+        if [[ -z "$pkg" ]]; then
+            pkg="$(echo "$cmd" | sed -n 's/.*pacman -S \([^ |;&]*\).*/\1/p' | head -1)"
+        fi
+        if [[ -n "$pkg" && "$pkg" != "--noconfirm" ]]; then
+            echo "native|$pkg"
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+catalog_has_update() {
+    local id="$1"
+    local spec kind pkg
+    spec="$(catalog_pkg_spec "$id")" || return 1
+    kind="${spec%%|*}"
+    pkg="${spec#*|}"
+    pkgmgr_package_outdated "$kind" "$pkg"
+}
+
+catalog_resolve_upgrade_cmd() {
+    local id="$1"
+    local explicit
+    if [[ "${PKG_MGR:-}" == "brew" ]]; then
+        explicit="$(catalog_get "$id" upgrade_brew)"
+        [[ -n "$explicit" ]] && { echo "$explicit"; return 0; }
+    else
+        explicit="$(catalog_get "$id" "upgrade_${PKG_MGR}")"
+        [[ -n "$explicit" ]] && { echo "$explicit"; return 0; }
+    fi
+
+    local spec kind pkg
+    spec="$(catalog_pkg_spec "$id")" || return 1
+    kind="${spec%%|*}"
+    pkg="${spec#*|}"
+
+    case "${PKG_MGR:-}" in
+        brew)
+            if [[ "$kind" == "cask" ]]; then
+                echo "brew upgrade --cask $pkg"
+            else
+                echo "brew upgrade $pkg"
+            fi
+            ;;
+        apt)
+            echo "sudo apt-get install --only-upgrade -y $pkg"
+            ;;
+        dnf)
+            echo "sudo dnf upgrade -y $pkg"
+            ;;
+        pacman)
+            echo "sudo pacman -S --noconfirm $pkg"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 load_catalogs() {
     local catalog_dir
     catalog_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../catalog" && pwd)"

@@ -101,6 +101,10 @@ run_undo() {
                     dry_run_add_step "Undo: $name" "(review) $commands" "$dest" "" "false" ""
                 fi
                 ;;
+            upgrade)
+                dry_run_add_step "Undo: $name" "" "$dest" "" "false" \
+                    "upgrade — not reversed (package stays installed)"
+                ;;
             install)
                 # Prefer catalog uninstall; fall back to heuristics
                 local uninstall_cmd=""
@@ -202,6 +206,10 @@ run_undo() {
                     sed -i.bak '/# >>> dotfiles-setup >>>/,/# <<< dotfiles-setup <<</d' "$HOME/.zprofile" 2>/dev/null || \
                         sed -i '' '/# >>> dotfiles-setup >>>/,/# <<< dotfiles-setup <<</d' "$HOME/.zprofile" 2>/dev/null || true
                 fi
+                ;;
+            upgrade)
+                prompt_info "Skipping undo for upgrade of $name (package stays installed)."
+                continue
                 ;;
             install)
                 if [[ "$id" == "homebrew" && "$remove_brew" != "true" ]]; then

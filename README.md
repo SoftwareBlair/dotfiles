@@ -13,7 +13,9 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-Confirm once and it installs. The repo can live **anywhere**; moving to `~/dotfiles` is optional.
+Confirm once and it installs. If something is already present and the package manager reports an update, you’ll be offered a chance to upgrade it (auto-accepted with `-y`).
+
+The repo can live **anywhere**; moving to `~/dotfiles` is optional.
 
 ```bash
 ./setup.sh -c move_dotfiles   # optional
@@ -63,6 +65,21 @@ To change the stack, edit `MY_SETUP`, `MY_SETUP_MACOS`, or `MY_SETUP_OPTIONAL` i
 | pacman | — | Arch |
 
 Homebrew is preferred so Mac and Linux stay close to the same workflow.
+
+### Updates for already-installed tools
+
+During setup, anything already installed is checked for updates via the active package manager:
+
+| Manager | How updates are detected |
+|---------|--------------------------|
+| Homebrew | `brew outdated` (formula / cask) |
+| apt | Installed vs candidate version |
+| dnf | `dnf check-update` |
+| pacman | `pacman -Qu` |
+
+If updates are available, setup lists them and asks once: **Update these packages now?** (`-y` accepts). Version bumps are logged as `upgrade` actions and are **not** uninstalled by `--undo`.
+
+Script-only installs (e.g. NVM curl installer, some font downloads) can’t always detect updates and are left as-is when already present.
 
 ## Dotfiles linked
 

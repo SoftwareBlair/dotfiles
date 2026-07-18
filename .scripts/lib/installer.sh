@@ -23,12 +23,33 @@ installer_is_installed() {
 # Build dry-run plan steps for selected IDs (caller should dry_run_begin_plan first)
 installer_plan_selections() {
     local id
+    local any_installed=false
     for id in "${SELECTED_IDS[@]}"; do
-        local name cmd dest side_effects requires_sudo
+        if installer_is_installed "$id"; then
+            any_installed=true
+            break
+        fi
+    done
+    if [[ "$any_installed" == "true" ]]; then
+        pkgmgr_refresh_metadata
+    fi
+
+    for id in "${SELECTED_IDS[@]}"; do
+        local name cmd dest side_effects requires_sudo upgrade_cmd
         name="$(catalog_get "$id" name)"
         if installer_is_installed "$id"; then
-            dry_run_add_step "$name" "" "$(catalog_install_dest "$id")" "" "false" \
-                "already present — would skip"
+            if catalog_has_update "$id"; then
+                upgrade_cmd="$(catalog_resolve_upgrade_cmd "$id")"
+                dry_run_add_step "Update $name" "$upgrade_cmd" "$(catalog_install_dest "$id")" \
+                    "already present — update available" \
+                    "$(catalog_get "$id" install_requires_sudo)" ""
+            elif catalog_pkg_spec "$id" &>/dev/null; then
+                dry_run_add_step "$name" "" "$(catalog_install_dest "$id")" "" "false" \
+                    "already present — up to date (would skip)"
+            else
+                dry_run_add_step "$name" "" "$(catalog_install_dest "$id")" "" "false" \
+                    "already present — would skip (no update check for this install method)"
+            fi
             continue
         fi
         cmd="$(catalog_resolve_install_cmd "$id")"
@@ -45,16 +66,98 @@ installer_plan_selections() {
     done
 }
 
+# Upgrade already-installed items that have updates available
+installer_offer_updates() {
+    local outdated_ids=()
+    local id name upgrade_cmd
+    local any_installed=false
+
+    for id in "${SELECTED_IDS[@]}"; do
+        if installer_is_installed "$id"; then
+            any_installed=true
+            break
+        fi
+    done
+    [[ "$any_installed" == "true" ]] || return 0
+
+    pkgmgr_refresh_metadata
+
+    for id in "${SELECTED_IDS[@]}"; do
+        installer_is_installed "$id" || continue
+        if catalog_has_update "$id"; then
+            outdated_ids+=("$id")
+        elif catalog_pkg_spec "$id" &>/dev/null; then
+            name="$(catalog_get "$id" name)"
+            prompt_info "$name is already installed — up to date."
+            report_skip "$name (up to date)" 2>/dev/null || true
+        else
+            name="$(catalog_get "$id" name)"
+            prompt_info "$name is already installed — skipping."
+            report_skip "$name (already installed)" 2>/dev/null || true
+        fi
+    done
+
+    [[ ${#outdated_ids[@]} -gt 0 ]] || return 0
+
+    echo ""
+    prompt_style "Updates available (${#outdated_ids[@]}):"
+    for id in "${outdated_ids[@]}"; do
+        echo "  • $(catalog_get "$id" name)"
+    done
+
+    if ! prompt_confirm "Update these packages now?" "true"; then
+        for id in "${outdated_ids[@]}"; do
+            name="$(catalog_get "$id" name)"
+            prompt_warn "Keeping current $name."
+            report_skip "$name (update declined)" 2>/dev/null || true
+        done
+        return 0
+    fi
+
+    local failed=0
+    for id in "${outdated_ids[@]}"; do
+        name="$(catalog_get "$id" name)"
+        upgrade_cmd="$(catalog_resolve_upgrade_cmd "$id")"
+        if [[ -z "$upgrade_cmd" ]]; then
+            prompt_warn "No upgrade recipe for $name — skipping."
+            report_skip "$name (no upgrade recipe)" 2>/dev/null || true
+            continue
+        fi
+
+        prompt_style "Updating $name..."
+        if prompt_spin "Updating $name..." bash -c "$upgrade_cmd"; then
+            state_log_install "$id" "$name" "upgrade" "$upgrade_cmd" \
+                "$(catalog_install_dest "$id")" \
+                "$(catalog_get "$id" install_side_effects)" "" "" ""
+            prompt_success "✓ $name updated"
+            report_ok "$name (updated)" 2>/dev/null || true
+        else
+            prompt_error "✗ Failed to update $name"
+            report_fail "$name (update)" 2>/dev/null || true
+            failed=$((failed + 1))
+            if [[ -z "${YES_MODE:-}" ]]; then
+                if ! prompt_confirm "Continue with remaining items?"; then
+                    return 1
+                fi
+            fi
+        fi
+    done
+    return "$failed"
+}
+
 installer_run_selections() {
     local id
     local failed=0
+
+    # Offer upgrades for anything already present before installing the rest
+    installer_offer_updates || failed=$?
+
     for id in "${SELECTED_IDS[@]}"; do
         local name cmd
         name="$(catalog_get "$id" name)"
 
         if installer_is_installed "$id"; then
-            prompt_info "$name is already installed — skipping."
-            report_skip "$name (already installed)" 2>/dev/null || true
+            # Already handled by installer_offer_updates (updated, declined, or up to date)
             continue
         fi
 

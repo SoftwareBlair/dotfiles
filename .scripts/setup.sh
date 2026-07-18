@@ -61,6 +61,7 @@ Defaults:
   • Editor: Cursor (VS Code optional when available)
   • Shell profile: Starship + this repo’s .zshrc
   • Dotfiles: symlink from this repo (any path; ~/dotfiles not required)
+  • Already installed: offer upgrade when the package manager has an update
 
 Customize stack: edit MY_SETUP in .scripts/lib/presets.sh
 State: ~/.dotfiles-setup/  (install log, features, backups)
