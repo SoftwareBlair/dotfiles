@@ -104,7 +104,7 @@ pick_pkgmgr() {
         return 0
     fi
     load_setup_prefs
-    # Prefer Homebrew for reliability / parity with your Mac improvements setup
+    # Prefer Homebrew for reliability / parity with the Mac workflow
     if [[ -n "${YES_MODE:-}" ]]; then
         PKG_MGR="${PKG_MGR:-brew}"
         return 0
