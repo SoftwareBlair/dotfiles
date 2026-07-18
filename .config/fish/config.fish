@@ -1,6 +1,14 @@
 # Fish config stub for dotfiles setup wizard
 
-set -gx STARSHIP_CONFIG "$HOME/dotfiles/.config/starship.toml"
+if test -z "$DOTFILES_DIR"
+    if test -d "$HOME/dotfiles"
+        set -gx DOTFILES_DIR "$HOME/dotfiles"
+    else
+        set -gx DOTFILES_DIR "$HOME/dotfiles"
+    end
+end
+
+set -gx STARSHIP_CONFIG "$DOTFILES_DIR/.config/starship.toml"
 
 if type -q starship
     starship init fish | source
@@ -16,6 +24,3 @@ if type -q eza
 end
 
 set -gx NVM_DIR "$HOME/.nvm"
-if test -s "$NVM_DIR/nvm.sh"
-    # nvm is bash-oriented; use bass or fnm/nvm.fish plugins if needed
-end

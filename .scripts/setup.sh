@@ -24,6 +24,10 @@ source "$SCRIPTS_DIR/lib/catalog.sh"
 source "$SCRIPTS_DIR/lib/installer.sh"
 # shellcheck disable=SC1091
 source "$SCRIPTS_DIR/lib/undo.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/presets.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/configure.sh"
 
 # Flags
 DRY_RUN=""
@@ -31,7 +35,11 @@ YES_MODE=""
 UNDO_MODE=""
 UNDO_SELECT=""
 PKG_MGR_FLAG=""
+PRESET_FLAG=""
+PLAN_FILE=""
+EXPORT_PLAN=""
 RUN_COMMAND=""
+WIZARD_MODE="" # full | add | custom
 
 usage() {
     cat <<'EOF'
@@ -42,13 +50,16 @@ Usage:
   ./setup.sh -c <command>
 
 Options:
-  -h, --help          Show this help
-  -y, --yes           Non-interactive: accept defaults / select all available items
-  -n, --dry-run       Preview commands and paths; make no changes
-  --undo              Reverse actions recorded in the install log
-  --select            With --undo: choose which logged items to undo
-  --pkgmgr <name>     Package manager: brew | apt | dnf | pacman
-  -c <command>        Run a single helper command
+  -h, --help              Show this help
+  -y, --yes               Non-interactive (uses personal preset by default)
+  -n, --dry-run           Preview commands and paths; make no changes
+  --undo                  Reverse actions recorded in the install log
+  --select                With --undo: choose which logged items to undo
+  --pkgmgr <name>         Package manager: brew | apt | dnf | pacman
+  --preset <name>         minimal | personal | full | custom
+  --plan <file>           Apply selections from a saved plan file
+  --export-plan <file>    After selections, write a plan file (default: ~/.dotfiles-setup/last-plan.env)
+  -c <command>            Run a single helper command
 
 Helpers (-c):
   move_dotfiles
@@ -56,19 +67,29 @@ Helpers (-c):
   symlink_dotfile <path>
   unlink_dotfile <path>
   uninstall_nvm
-  revert_setup        Same as --undo
+  revert_setup            Same as --undo
 
 Examples:
   ./setup.sh
-  ./setup.sh --dry-run
-  ./setup.sh -y --dry-run --pkgmgr apt
-  ./setup.sh --undo
+  ./setup.sh --preset personal --dry-run
+  ./setup.sh -y --preset minimal --pkgmgr apt
+  ./setup.sh --plan ~/.dotfiles-setup/last-plan.env
   ./setup.sh --undo --dry-run
-  ./setup.sh -c move_dotfiles
+
+Presets:
+  personal   SFMono, Warp, Zed, zsh, Starship, eza, NVM, plugins, …
+  minimal    zsh + Starship + eza
+  full       Everything available for this OS / package manager
+  custom     Pick each category interactively
 
 State:
-  Install log: ~/.dotfiles-setup/install-log.jsonl
-  Backups:     ~/.dotfiles-setup/backups/
+  Install log:  ~/.dotfiles-setup/install-log.jsonl
+  Features:     ~/.dotfiles-setup/shell-features.zsh
+  Prefs / plan: ~/.dotfiles-setup.conf , last-plan.env
+  Backups:      ~/.dotfiles-setup/backups/
+
+Dotfiles may live anywhere — DOTFILES_DIR is detected from this repo path
+(or set in prefs). Moving to ~/dotfiles is optional.
 EOF
 }
 
@@ -99,10 +120,26 @@ parse_args() {
                 PKG_MGR_FLAG="${2:-}"
                 shift 2
                 ;;
+            --preset)
+                PRESET_FLAG="${2:-}"
+                shift 2
+                ;;
+            --plan)
+                PLAN_FILE="${2:-}"
+                shift 2
+                ;;
+            --export-plan)
+                shift
+                if [[ $# -gt 0 && "$1" != -* ]]; then
+                    EXPORT_PLAN="$1"
+                    shift
+                else
+                    EXPORT_PLAN="$HOME/.dotfiles-setup/last-plan.env"
+                fi
+                ;;
             -c)
                 RUN_COMMAND="${2:-}"
                 shift 2
-                # Remaining args for the command
                 RUN_COMMAND_ARGS=("$@")
                 return 0
                 ;;
@@ -115,13 +152,75 @@ parse_args() {
     done
 }
 
+ensure_dotfiles_location() {
+    # Allow repo to live anywhere; optionally offer move to ~/dotfiles
+    prompt_info "Dotfiles directory: $DOTFILES_DIR"
+
+    if [[ "$DOTFILES_DIR" == "$HOME/dotfiles" ]]; then
+        return 0
+    fi
+
+    if [[ -n "${YES_MODE:-}" ]]; then
+        prompt_info "Using $DOTFILES_DIR as-is (-y mode; not moving)."
+        return 0
+    fi
+
+    local choice
+    choice="$(prompt_choose_one "Dotfiles are at $DOTFILES_DIR (not ~/dotfiles). What next?" \
+        "Continue with this location (recommended)" \
+        "Move to ~/dotfiles" \
+        "Cancel")"
+    case "$choice" in
+        Move*)
+            move_dotfiles
+            DOTFILES_DIR="$HOME/dotfiles"
+            ;;
+        Cancel*)
+            exit 1
+            ;;
+        *)
+            prompt_info "Continuing with DOTFILES_DIR=$DOTFILES_DIR"
+            ;;
+    esac
+}
+
+maybe_resume_menu() {
+    local count
+    count="$(state_log_count)"
+    if [[ "$count" -eq 0 ]] || [[ -n "${YES_MODE:-}" ]] || [[ -n "${PLAN_FILE:-}" ]] || [[ -n "${PRESET_FLAG:-}" ]]; then
+        WIZARD_MODE="full"
+        return 0
+    fi
+
+    prompt_style "── Previous setup detected ──"
+    prompt_info "Install log has $count action(s) in $INSTALL_LOG"
+
+    local choice
+    choice="$(prompt_choose_one "How do you want to continue?" \
+        "Full wizard (choose preset / categories again)" \
+        "Add more tools (custom pick, keep existing installs)" \
+        "Undo previous setup" \
+        "Cancel")"
+    case "$choice" in
+        Add*) WIZARD_MODE="add"; PRESET_FLAG="custom" ;;
+        Undo*)
+            run_undo "false"
+            exit 0
+            ;;
+        Cancel*)
+            exit 0
+            ;;
+        *) WIZARD_MODE="full" ;;
+    esac
+}
+
 choose_package_manager() {
     if [[ -n "$PKG_MGR_FLAG" ]]; then
         PKG_MGR="$PKG_MGR_FLAG"
         return 0
     fi
 
-    load_pkgmgr_pref
+    load_setup_prefs
     local options=()
     while IFS= read -r m; do
         [[ -n "$m" ]] && options+=("$m")
@@ -158,13 +257,12 @@ choose_package_manager() {
         pacman*) PKG_MGR="pacman" ;;
         *) PKG_MGR="${options[0]}" ;;
     esac
-    save_pkgmgr_pref "$PKG_MGR"
 }
 
 collect_category() {
     local category="$1"
     local header="$2"
-    local filter_shells="${3:-}"  # optional: comma list of shells to filter shell-configs
+    local filter_shells="${3:-}"
 
     local labels=()
     local id
@@ -202,7 +300,6 @@ collect_category() {
     done <<< "$picked"
 }
 
-# Single-select for shells (zsh | fish), allow skip
 collect_shell() {
     local labels=()
     local id
@@ -212,7 +309,6 @@ collect_shell() {
         labels+=("$(catalog_label "$id")")
     done < <(catalog_ids_by_category "shells")
 
-    # Non-interactive: prefer zsh when available
     if [[ -n "${YES_MODE:-}" ]]; then
         for id in $(catalog_ids_by_category "shells"); do
             if [[ "$id" == "zsh" ]] && catalog_available "$id"; then
@@ -221,20 +317,12 @@ collect_shell() {
                 return 0
             fi
         done
-        if [[ ${#labels[@]} -gt 0 ]]; then
-            local cid
-            cid="$(catalog_id_from_label "${labels[0]}")" || true
-            if [[ -n "${cid:-}" ]]; then
-                installer_add_selection "$cid"
-                SELECTED_SHELL="$cid"
-            fi
-        fi
         return 0
     fi
 
     labels=("Skip — keep current shell" "${labels[@]}")
     local choice
-    choice="$(prompt_choose_one "Choose a shell (bash is not offered — already default on most Linux / zsh on modern macOS)" "${labels[@]}")"
+    choice="$(prompt_choose_one "Choose a shell (bash is not offered)" "${labels[@]}")"
     if [[ "$choice" == Skip* ]]; then
         SELECTED_SHELL=""
         return 0
@@ -246,44 +334,66 @@ collect_shell() {
 }
 
 collect_symlinks() {
-    local options=()
-    options+=(".zshrc")
-    options+=(".config")
-    [[ " ${SELECTED_IDS[*]} " == *" warp "* ]] && options+=(".warp")
-    [[ " ${SELECTED_IDS[*]} " == *" zed "* ]] && options+=(".config/zed")
-    [[ " ${SELECTED_IDS[*]} " == *" fish "* || "$SELECTED_SHELL" == "fish" ]] && options+=(".config/fish")
+    choose_link_mode
 
-    if ! prompt_confirm "Symlink dotfiles from $DOTFILES_DIR?" "true"; then
+    local defaults=()
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && defaults+=("$line")
+    done < <(smart_symlink_defaults)
+
+    if [[ ${#defaults[@]} -eq 0 ]]; then
+        SYMLINK_TARGETS=()
+        return 0
+    fi
+
+    local verb="Symlink"
+    [[ "$LINK_MODE" == "copy" ]] && verb="Copy"
+
+    if [[ -n "${YES_MODE:-}" ]]; then
+        SYMLINK_TARGETS=("${defaults[@]}")
+        prompt_info "$verb defaults: ${SYMLINK_TARGETS[*]}"
+        return 0
+    fi
+
+    if ! prompt_confirm "$verb dotfiles from $DOTFILES_DIR into \$HOME?" "true"; then
         SYMLINK_TARGETS=()
         return 0
     fi
 
     local picked
-    picked="$(prompt_choose_many "Select paths to symlink" "${options[@]}")"
+    picked="$(prompt_choose_many "Select paths to $verb (suggested from your selections)" "${defaults[@]}")"
     SYMLINK_TARGETS=()
     while IFS= read -r p || [[ -n "$p" ]]; do
         [[ -n "$p" ]] && SYMLINK_TARGETS+=("$p")
     done <<< "$picked"
 }
 
+run_category_pickers() {
+    prompt_style "── Fonts ──"
+    collect_category "fonts" "Select coding fonts"
+
+    prompt_style "── Developer Software ──"
+    collect_category "dev-tools" "Select developer software"
+
+    prompt_style "── Shell ──"
+    collect_shell
+
+    prompt_style "── Shell Configuration ──"
+    local shell_filter="zsh,fish"
+    [[ -n "${SELECTED_SHELL:-}" ]] && shell_filter="$SELECTED_SHELL"
+    collect_category "shell-configs" "Select shell tools & configs" "$shell_filter"
+}
+
 run_wizard() {
     init_platform
     state_init
+    load_setup_prefs
     ensure_gum || prompt_warn "gum not available — using basic prompts."
     load_catalogs
 
     prompt_welcome "Developer Machine Setup" "$(platform_label)"
-
-    if [[ "$DOTFILES_DIR" != "$HOME/dotfiles" ]]; then
-        prompt_error "Dotfiles are not in \$HOME/dotfiles (currently: $DOTFILES_DIR)."
-        if prompt_confirm "Run move_dotfiles now?"; then
-            move_dotfiles
-            DOTFILES_DIR="$HOME/dotfiles"
-        else
-            prompt_info "Run: ./setup.sh -c move_dotfiles"
-            exit 1
-        fi
-    fi
+    ensure_dotfiles_location
+    maybe_resume_menu
 
     choose_package_manager
     prompt_info "Package manager: $PKG_MGR"
@@ -293,42 +403,56 @@ run_wizard() {
     installer_clear_selections
     SELECTED_SHELL=""
     SYMLINK_TARGETS=()
+    INSTALL_REPORT_OK=()
+    INSTALL_REPORT_SKIP=()
+    INSTALL_REPORT_FAIL=()
+    INSTALL_REPORT_CONFIG=()
 
-    install_prerequisites
-
-    prompt_style "── Fonts ──"
-    collect_category "fonts" "Select coding fonts (space to toggle / multi-select)"
-
-    prompt_style "── Developer Software ──"
-    collect_category "dev-tools" "Select developer software"
-
-    prompt_style "── Shell ──"
-    collect_shell
-
-    prompt_style "── Shell Configuration ──"
-    local shell_filter=""
-    if [[ -n "${SELECTED_SHELL:-}" ]]; then
-        shell_filter="$SELECTED_SHELL"
+    if [[ -n "$PLAN_FILE" ]]; then
+        load_plan_file "$PLAN_FILE"
     else
-        shell_filter="zsh,fish"
+        choose_preset
+        if [[ "$PRESET_NAME" == "custom" ]]; then
+            run_category_pickers
+        else
+            prompt_info "Preset: $PRESET_NAME"
+            apply_preset_selections
+            # Still allow shell pick if preset didn't include one
+            if [[ -z "${SELECTED_SHELL:-}" && -z "${YES_MODE:-}" ]]; then
+                prompt_style "── Shell ──"
+                collect_shell
+            fi
+        fi
     fi
-    collect_category "shell-configs" "Select shell tools & configs" "$shell_filter"
 
+    prompt_dependency_hints
+    resolve_shell_profile_conflict
     configure_git_interactive
     collect_symlinks
 
     # Summary
     echo ""
     prompt_style "── Summary ──"
+    echo "  Preset: ${PRESET_NAME:-custom}"
+    echo "  Profile: ${SHELL_PROFILE_MODE:-none}"
+    echo "  Link mode: $LINK_MODE"
+    echo "  Dotfiles: $DOTFILES_DIR"
     local id
     for id in "${SELECTED_IDS[@]}"; do
         echo "  • $(catalog_get "$id" name)"
     done
     for p in "${SYMLINK_TARGETS[@]:-}"; do
-        echo "  • symlink $p"
+        echo "  • $LINK_MODE $p"
     done
     echo "  Package manager: $PKG_MGR"
     dry_run_is_active && echo "  Mode: DRY RUN" || true
+
+    if [[ -n "${EXPORT_PLAN:-}" ]] || [[ -z "${YES_MODE:-}" ]]; then
+        local plan_out="${EXPORT_PLAN:-$STATE_DIR/last-plan.env}"
+        if [[ -n "${EXPORT_PLAN:-}" ]] || prompt_confirm "Save this plan for later (--plan)?" "true"; then
+            export_plan_file "$plan_out"
+        fi
+    fi
 
     local action="Install now"
     if [[ -z "${YES_MODE:-}" ]]; then
@@ -349,10 +473,14 @@ run_wizard() {
     if [[ "$action" == "Preview install plan" || "$action" == "Preview plan" ]] || dry_run_is_active; then
         local was_dry="$DRY_RUN"
         DRY_RUN=1
+        install_prerequisites
         installer_plan_selections
         for p in "${SYMLINK_TARGETS[@]:-}"; do
-            symlink_dotfile_safe "$p"
+            install_dotfile_path "$p"
         done
+        write_shell_features
+        configure_starship
+        configure_oh_my_zsh_profile
         if [[ -n "${SELECTED_SHELL:-}" ]]; then
             maybe_chsh "$SELECTED_SHELL"
         fi
@@ -361,6 +489,7 @@ run_wizard() {
 
         if dry_run_is_active; then
             prompt_info "Dry run complete — no changes made."
+            save_setup_prefs
             exit 0
         fi
 
@@ -372,14 +501,21 @@ run_wizard() {
 
     # Real install
     DRY_RUN=""
+    install_prerequisites
     installer_run_selections
     for p in "${SYMLINK_TARGETS[@]:-}"; do
-        symlink_dotfile_safe "$p"
+        install_dotfile_path "$p"
     done
+    write_shell_features
+    configure_starship
+    configure_oh_my_zsh_profile
     if [[ -n "${SELECTED_SHELL:-}" ]]; then
         maybe_chsh "$SELECTED_SHELL"
     fi
 
+    save_setup_prefs
+    export_plan_file "$STATE_DIR/last-plan.env"
+    print_final_report
     prompt_welcome "Setup complete!" "Restart your terminal to apply changes"
 }
 
@@ -393,7 +529,7 @@ if [[ -n "$UNDO_MODE" ]]; then
     if [[ -n "$PKG_MGR_FLAG" ]]; then
         PKG_MGR="$PKG_MGR_FLAG"
     else
-        load_pkgmgr_pref
+        load_setup_prefs
         PKG_MGR="${PKG_MGR:-brew}"
         ensure_brew_shellenv || true
     fi

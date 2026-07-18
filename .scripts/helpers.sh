@@ -9,7 +9,7 @@ if [[ -z "${Off:-}" ]]; then
 fi
 
 move_dotfiles() {
-    echo -e "${BackCyan}Moving dotfiles to home directory...${Off}"
+    echo -e "${BackCyan}Moving dotfiles to ~/dotfiles (optional)...${Off}"
 
     if [[ "$DOTFILES_DIR" != "$HOME/dotfiles" ]]; then
         if dry_run_is_active 2>/dev/null; then
@@ -19,8 +19,9 @@ move_dotfiles() {
         mv "$DOTFILES_DIR" "$HOME/dotfiles"
         DOTFILES_DIR="$HOME/dotfiles"
         echo -e "${Green}Moved to $HOME/dotfiles${Off}"
+        echo -e "${Cyan}Tip: the wizard also works from any path without moving.${Off}"
     else
-        echo -e "${Yellow}Dotfiles are already in home directory.${Off}"
+        echo -e "${Yellow}Dotfiles are already in ~/dotfiles.${Off}"
     fi
 }
 

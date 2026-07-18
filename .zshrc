@@ -1,22 +1,33 @@
-[[ -f $HOME/dotfiles/.zsh/aliases.zsh ]] && source $HOME/dotfiles/.zsh/aliases.zsh
-[[ -f $HOME/dotfiles/.zsh/nvm.zsh ]] && source $HOME/dotfiles/.zsh/nvm.zsh
-
-# zsh-autosuggestions (Homebrew or system paths)
-if command -v brew >/dev/null 2>&1; then
-  [[ -f "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]] && \
-    source "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-  [[ -d "$(brew --prefix)/share/zsh-syntax-highlighting" ]] && \
-    source "$(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-  [[ -f "$(brew --prefix)/etc/profile.d/z.sh" ]] && \
-    source "$(brew --prefix)/etc/profile.d/z.sh"
+# Resolve dotfiles location (symlink target, features file, or ~/dotfiles)
+if [[ -z "${DOTFILES_DIR:-}" ]]; then
+  if [[ -f "$HOME/.dotfiles-setup/shell-features.zsh" ]]; then
+    # shellcheck disable=SC1090
+    source "$HOME/.dotfiles-setup/shell-features.zsh"
+  elif [[ -L "$HOME/.zshrc" ]]; then
+    _zshrc_target="$(readlink "$HOME/.zshrc")"
+    DOTFILES_DIR="$(cd "$(dirname "$_zshrc_target")" 2>/dev/null && pwd)"
+    unset _zshrc_target
+  else
+    DOTFILES_DIR="$HOME/dotfiles"
+  fi
 fi
-[[ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && \
-  source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-[[ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && \
-  source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-[[ -f "$HOME/.z-jump/z.sh" ]] && source "$HOME/.z-jump/z.sh"
 
-# zoxide (if installed)
-command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh)"
+export DOTFILES_DIR
 
-command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"
+# Load wizard-generated feature flags if not already loaded
+[[ -f "$HOME/.dotfiles-setup/shell-features.zsh" ]] && \
+  source "$HOME/.dotfiles-setup/shell-features.zsh"
+
+# Defaults when features file is absent
+: "${DOTFILES_ENABLE_STARSHIP:=1}"
+: "${DOTFILES_ENABLE_OMZ:=0}"
+
+[[ -f "$DOTFILES_DIR/.zsh/aliases.zsh" ]] && source "$DOTFILES_DIR/.zsh/aliases.zsh"
+[[ -f "$DOTFILES_DIR/.zsh/nvm.zsh" ]] && source "$DOTFILES_DIR/.zsh/nvm.zsh"
+[[ -f "$DOTFILES_DIR/.zsh/plugins.zsh" ]] && source "$DOTFILES_DIR/.zsh/plugins.zsh"
+
+# Oh My Zsh (optional — before Starship so Starship can own the prompt in merged mode)
+[[ -f "$DOTFILES_DIR/.zsh/oh-my-zsh.zsh" ]] && source "$DOTFILES_DIR/.zsh/oh-my-zsh.zsh"
+
+# Starship (optional)
+[[ -f "$DOTFILES_DIR/.zsh/starship.zsh" ]] && source "$DOTFILES_DIR/.zsh/starship.zsh"

@@ -2,7 +2,7 @@
 
 Interactive wizard to bootstrap a new developer machine: coding fonts, editors/terminals, shells (**zsh** or **fish**), and shell tools — with your choice of package manager (**Homebrew**, **apt**, **dnf**, or **pacman**).
 
-Personal dotfiles in this repo (Starship, zsh aliases, Warp/Zed themes, etc.) can be optionally symlinked at the end.
+Personal dotfiles in this repo can be symlinked or copied. Starship / Oh My Zsh are **installed and configured** (with conflict handling when both are selected).
 
 **Windows is not supported.**
 
@@ -10,149 +10,159 @@ Personal dotfiles in this repo (Starship, zsh aliases, Warp/Zed themes, etc.) ca
 
 - `git` and `curl`
 - `sudo` for system package installs (apt/dnf/pacman)
-- A terminal that supports interactive prompts (or use `-y` / `--dry-run` for non-interactive / preview)
+- A terminal that supports interactive prompts (or use `-y` / `--dry-run`)
 
 ## Quick start
 
 ```bash
-git clone https://github.com/SoftwareBlair/dotfiles.git ~/dotfiles
-cd ~/dotfiles/.scripts
+git clone https://github.com/SoftwareBlair/dotfiles.git
+cd dotfiles/.scripts
 chmod +x setup.sh
 ./setup.sh
 ```
 
-If the repo is not at `~/dotfiles`:
+The repo can live **anywhere** — you are no longer required to use `~/dotfiles`. Moving there is optional.
 
 ```bash
-./setup.sh -c move_dotfiles
-./setup.sh
+./setup.sh -c move_dotfiles   # optional
 ```
 
 Restart your terminal when finished.
 
+## Presets
+
+| Preset | Includes |
+|--------|----------|
+| **personal** | SFMono + JetBrains Mono, VS Code, Warp, Zed, zsh, Starship, eza, NVM, plugins, fzf, zoxide |
+| **minimal** | zsh + Starship + eza |
+| **full** | Everything available for this OS / package manager |
+| **custom** | Pick each category interactively |
+
+```bash
+./setup.sh --preset personal
+./setup.sh -y --preset minimal --pkgmgr apt
+```
+
+`-y` uses the **personal** preset by default (not “select everything”).
+
 ## Interactive wizard
 
-1. Detects OS (macOS / Linux), distro family, and architecture  
-2. Lets you choose a **package manager** available on this system  
-3. Installs prerequisites (Xcode CLT on macOS, build tools on Linux)  
-4. Multi-select catalogs:
-   - **Fonts** — SFMono Nerd Font, Hack, FiraCode, JetBrains Mono, Meslo, Cascadia Code  
-   - **Developer software** — VS Code, Warp (Mac + Linux), Zed, JetBrains Toolbox, GitHub CLI, Git, Raycast (macOS only)  
-   - **Shell** — **zsh** or **fish** only (bash is not offered; it is already the default on most Linux distros, and zsh is default on modern macOS)  
-   - **Shell configs** — Starship, Oh My Zsh, eza, NVM, zsh plugins, fzf, zoxide, bat  
-5. Optional Git identity configuration  
-6. Optional symlink of dotfiles from this repo  
-7. Preview the install plan or install immediately  
+1. Detects OS / distro / arch  
+2. Offers resume if a previous install log exists (full wizard / add tools / undo)  
+3. Chooses package manager  
+4. Chooses a **preset** or custom categories  
+5. Suggests dependencies (e.g. Nerd Font when Starship is selected)  
+6. Resolves **Starship vs Oh My Zsh** if both are selected  
+7. Optional Git config  
+8. Smart symlink/copy suggestions based on selections  
+9. Preview plan or install  
+10. Writes shell features + end-of-run report  
+
+### Starship & Oh My Zsh configuration
+
+| Mode | Behavior |
+|------|----------|
+| **Starship** (default if both) | Modular `.zshrc` loads Starship; OMZ may be installed but not loaded |
+| **Oh My Zsh** | Modular `.zshrc` loads OMZ as primary |
+| **Merged** | OMZ plugins + Starship as the prompt (`ZSH_THEME=""`) |
+
+Features are written to `~/.dotfiles-setup/shell-features.zsh` and sourced by [`.zshrc`](.zshrc).
 
 ## Package managers
 
-| Manager   | macOS | Linux                          |
-|-----------|-------|--------------------------------|
-| Homebrew  | Yes   | Yes (Linuxbrew)                |
-| apt       | —     | Debian / Ubuntu family         |
-| dnf       | —     | Fedora / RHEL family           |
-| pacman    | —     | Arch family                    |
-
-Skip the picker with:
+| Manager | macOS | Linux |
+|---------|-------|-------|
+| Homebrew | Yes | Yes (Linuxbrew) |
+| apt | — | Debian / Ubuntu |
+| dnf | — | Fedora / RHEL |
+| pacman | — | Arch |
 
 ```bash
 ./setup.sh --pkgmgr apt
 ```
 
-Preference is saved to `~/.dotfiles-setup.conf`.
-
 ## Dry run
-
-See **exactly** which commands would run, where things install, and side effects — without changing your system:
 
 ```bash
 ./setup.sh --dry-run
-# or
-./setup.sh -n
+./setup.sh --preset personal -n --pkgmgr brew
+./setup.sh -y --preset minimal --dry-run
 ```
 
-Non-interactive plan from defaults:
+## Saved plans
 
 ```bash
-./setup.sh -y --dry-run --pkgmgr brew
+./setup.sh --export-plan ~/my-setup.env
+./setup.sh --plan ~/my-setup.env --dry-run
 ```
 
-In interactive mode you can also choose **Preview install plan** before confirming.
+Plans are also saved to `~/.dotfiles-setup/last-plan.env` after a successful run.
 
 ## Undo / revert
 
-Every successful install, symlink, and wizard-owned side effect is recorded in:
-
-```text
-~/.dotfiles-setup/install-log.jsonl
-```
-
-Backups of replaced files go to `~/.dotfiles-setup/backups/`.
-
 ```bash
-./setup.sh --undo                 # reverse everything logged
-./setup.sh --undo --dry-run       # preview undo plan
-./setup.sh --undo --select        # pick which items to undo
-./setup.sh -c revert_setup        # same as --undo
+./setup.sh --undo
+./setup.sh --undo --dry-run
+./setup.sh --undo --select
+./setup.sh -c revert_setup
 ```
 
-Safety notes:
-
-- Only items installed by this wizard (`owned_by_wizard`) are removed  
-- Pre-existing tools are not uninstalled  
-- `~/.gitconfig` is **never** deleted automatically  
-- Homebrew is only removed if you explicitly opt in during undo  
+- Only wizard-owned installs/symlinks are removed  
+- `~/.gitconfig` is never deleted  
+- Homebrew removal is opt-in  
 
 ## Flags reference
 
 | Flag | Description |
 |------|-------------|
 | `-h`, `--help` | Show help |
-| `-y`, `--yes` | Non-interactive defaults / select all available items |
-| `-n`, `--dry-run` | Preview only; no changes |
-| `--undo` | Reverse logged setup actions |
-| `--select` | With `--undo`: choose items |
+| `-y`, `--yes` | Non-interactive (personal preset) |
+| `-n`, `--dry-run` | Preview only |
+| `--preset <name>` | `minimal` \| `personal` \| `full` \| `custom` |
+| `--plan <file>` | Apply a saved plan |
+| `--export-plan [file]` | Write a plan file |
+| `--undo` / `--select` | Reverse logged actions |
 | `--pkgmgr <name>` | `brew` \| `apt` \| `dnf` \| `pacman` |
-| `-c <command>` | Run a single helper |
-
-## Selective helpers (`-c`)
-
-```bash
-./setup.sh -c move_dotfiles
-./setup.sh -c remove_git_origin_remote
-./setup.sh -c revert_setup
-./setup.sh -c uninstall_nvm
-```
+| `-c <command>` | Run a helper |
 
 ## Dotfiles layout
 
-When you opt into symlinks, typical targets are:
-
-| Path | When |
+| Path | Role |
 |------|------|
-| `.zshrc` | zsh users |
-| `.config` | Starship and other shared config |
-| `.config/zed` | Zed selected |
-| `.warp` | Warp selected |
-| `.config/fish` | fish selected |
+| `.zshrc` | Modular entrypoint (`DOTFILES_DIR`, features, aliases, plugins, OMZ, Starship) |
+| `.zsh/starship.zsh` | Starship init when enabled |
+| `.zsh/oh-my-zsh.zsh` | Oh My Zsh when enabled |
+| `.zsh/plugins.zsh` | autosuggestions, syntax-highlighting, z, zoxide |
+| `.config/starship.toml` | Starship theme |
+| `.config/zed/` | Zed settings (when Zed selected) |
+| `.warp/` | Warp themes (when Warp selected) |
+| `.config/fish/` | Fish stub |
 
-## Terminal UI
+Link mode: **symlink** (default) or **copy**.
 
-The wizard uses [gum](https://github.com/charmbracelet/gum) when available (installed via Homebrew or a downloaded binary under `.scripts/bin/`). If gum cannot be installed, it falls back to plain colored prompts.
+## State files
+
+```text
+~/.dotfiles-setup/
+  install-log.jsonl      # undo source of truth
+  shell-features.zsh     # ENABLE_STARSHIP / ENABLE_OMZ / DOTFILES_DIR
+  last-plan.env          # reusable plan
+  backups/               # pre-overwrite backups
+~/.dotfiles-setup.conf   # last pkgmgr, preset, selections
+```
 
 ## Troubleshooting
 
 | Issue | What to try |
 |-------|-------------|
-| Unsupported OS | Only macOS and Linux are supported |
-| Option missing from list | Filtered for your OS + package manager |
-| Partial install failure | Re-run wizard or `--undo --select` then retry |
-| Shell plugins not loading | Ensure brew/system paths match [`.zshrc`](.zshrc); restart terminal |
-| Fonts not showing | Restart terminal / set font in terminal settings; on Linux run `fc-cache -fv` |
+| Prompt not showing Starship | Check `~/.dotfiles-setup/shell-features.zsh` and restart terminal |
+| OMZ not loading | Ensure profile mode is `oh-my-zsh` or `merged`; re-run wizard |
+| Fonts missing glyphs | Set terminal font to a Nerd Font |
+| Wrong repo path | Features file stores `DOTFILES_DIR`; re-run setup after moving |
 
 ## Contributing
 
-Fork, branch, and open a pull request. Suggestions welcome.
+Fork, branch, and open a pull request.
 
 ## License
 

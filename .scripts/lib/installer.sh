@@ -55,12 +55,14 @@ installer_run_selections() {
 
         if installer_is_installed "$id"; then
             prompt_info "$name is already installed — skipping."
+            report_skip "$name (already installed)" 2>/dev/null || true
             continue
         fi
 
         cmd="$(catalog_resolve_install_cmd "$id")"
         if [[ -z "$cmd" ]]; then
             prompt_warn "No install recipe for $name with $PKG_MGR on $PLATFORM — skipping."
+            report_skip "$name (no recipe)" 2>/dev/null || true
             continue
         fi
 
@@ -80,15 +82,21 @@ installer_run_selections() {
                     "$(catalog_get "$id" install_side_effects)" "" "" ""
             fi
             prompt_success "✓ $name installed"
+            report_ok "$name" 2>/dev/null || true
 
             # Optional post symlink
             local post_symlink
             post_symlink="$(catalog_get "$id" post_symlink)"
             if [[ -n "$post_symlink" && -e "$DOTFILES_DIR/$post_symlink" ]]; then
-                symlink_dotfile_safe "$post_symlink"
+                if declare -f install_dotfile_path >/dev/null 2>&1; then
+                    install_dotfile_path "$post_symlink"
+                else
+                    symlink_dotfile_safe "$post_symlink"
+                fi
             fi
         else
             prompt_error "✗ Failed to install $name"
+            report_fail "$name" 2>/dev/null || true
             failed=$((failed + 1))
             if [[ -z "${YES_MODE:-}" ]]; then
                 if ! prompt_confirm "Continue with remaining items?"; then

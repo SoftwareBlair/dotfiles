@@ -108,14 +108,31 @@ state_backup_path() {
     echo "$dest"
 }
 
-save_pkgmgr_pref() {
-    local mgr="$1"
-    echo "PKG_MGR=$mgr" > "$SETUP_CONF"
+save_setup_prefs() {
+    state_init
+    {
+        echo "PKG_MGR=${PKG_MGR:-}"
+        echo "LAST_PRESET=${PRESET_NAME:-}"
+        echo "LAST_SELECTION_IDS=\"${SELECTED_IDS[*]:-}\""
+        echo "LAST_SHELL_PROFILE=${SHELL_PROFILE_MODE:-}"
+        echo "LAST_LINK_MODE=${LINK_MODE:-symlink}"
+        echo "DOTFILES_DIR=${DOTFILES_DIR:-}"
+    } > "$SETUP_CONF"
 }
 
-load_pkgmgr_pref() {
+# Backward-compatible alias
+save_pkgmgr_pref() {
+    PKG_MGR="$1"
+    save_setup_prefs
+}
+
+load_setup_prefs() {
     if [[ -f "$SETUP_CONF" ]]; then
         # shellcheck disable=SC1090
         . "$SETUP_CONF"
     fi
+}
+
+load_pkgmgr_pref() {
+    load_setup_prefs
 }
