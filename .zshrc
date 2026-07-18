@@ -18,6 +18,12 @@ export DOTFILES_DIR
 [[ -f "$HOME/.dotfiles-setup/shell-features.zsh" ]] && \
   source "$HOME/.dotfiles-setup/shell-features.zsh"
 
+# Non-login interactive shells never read ~/.zprofile — load secrets here
+if [[ ! -o login && -f "$HOME/.zprofile" ]]; then
+  # shellcheck disable=SC1090
+  source "$HOME/.zprofile"
+fi
+
 # Defaults when features file is absent
 : "${DOTFILES_ENABLE_STARSHIP:=1}"
 : "${DOTFILES_ENABLE_OMZ:=0}"

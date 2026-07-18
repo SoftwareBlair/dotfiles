@@ -34,7 +34,7 @@ state_log_install() {
     state_init
 
     local line
-    line=$(printf '{"id":"%s","name":"%s","timestamp":"%s","pkgmgr":"%s","platform":"%s","action":"%s","commands":"%s","dest":"%s","side_effects":"%s","symlink_source":"%s","symlink_target":"%s","replaced_backup":"%s","owned_by_wizard":true}' \
+    line=$(printf '{"id":"%s","name":"%s","timestamp":"%s","pkgmgr":"%s","platform":"%s","action":"%s","commands":"%s","dest":"%s","side_effects":"%s","symlink_source":"%s","symlink_target":"%s","replaced_backup":"%s","owned_by_setup":true}' \
         "$(_json_escape "$id")" \
         "$(_json_escape "$name")" \
         "$ts" \

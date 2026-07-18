@@ -246,61 +246,6 @@ symlink_dotfile_safe() {
     prompt_success "Linked $rel"
 }
 
-configure_git_interactive() {
-    # Skip git identity prompts in non-interactive mode
-    if [[ -n "${YES_MODE:-}" ]]; then
-        prompt_info "Skipping interactive git config (-y mode)."
-        return 0
-    fi
-
-    if ! prompt_confirm "Configure common Git settings?"; then
-        prompt_warn "Skipping git config."
-        return 0
-    fi
-
-    if [[ -f "$HOME/.gitconfig" ]]; then
-        if prompt_confirm "Git config already exists. Overwrite identity settings?"; then
-            prompt_info "Updating git config..."
-        else
-            prompt_warn "Skipping git config overwrite."
-            return 0
-        fi
-    fi
-
-    local git_name git_email
-    git_name="$(prompt_input "Your name" "")"
-    git_email="$(prompt_input "Your email" "")"
-
-    if dry_run_is_active; then
-        dry_run_add_step "Git config" \
-            "git config --global user.name/email + defaults" \
-            "$HOME/.gitconfig" "does not delete existing .gitconfig on undo" "false" ""
-        return 0
-    fi
-
-    [[ -n "$git_name" ]] && git config --global user.name "$git_name"
-    [[ -n "$git_email" ]] && git config --global user.email "$git_email"
-    git config --global init.defaultBranch main
-    git config --global alias.hist 'log --pretty=format:"%h %ad | %s%d [%an]" --graph --date=short'
-
-    if prompt_confirm "Set Cursor as preferred Git editor?" "true"; then
-        if command -v cursor &>/dev/null; then
-            git config --global core.editor "cursor --wait"
-        elif command -v code &>/dev/null; then
-            git config --global core.editor "code --wait"
-            prompt_info "Cursor not found; using VS Code for core.editor."
-        else
-            prompt_warn "Cursor/VS Code not found; skipping editor setting."
-        fi
-    fi
-
-    if prompt_confirm "Set rebasing as default pull strategy?" "false"; then
-        git config --global pull.rebase true
-    fi
-
-    prompt_success "Git configured (identity is not auto-removed by --undo)."
-}
-
 maybe_chsh() {
     local shell_id="$1"
     local shell_path

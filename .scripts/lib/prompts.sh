@@ -2,6 +2,7 @@
 # gum wrappers with colored read fallback
 
 ensure_gum() {
+    # Use gum only if already available — never auto-install (keeps setup fast/predictable)
     if command -v gum &>/dev/null; then
         return 0
     fi
@@ -13,43 +14,6 @@ ensure_gum() {
         return 0
     fi
 
-    # Try brew if available
-    if command -v brew &>/dev/null; then
-        echo "Installing gum (terminal UI) via Homebrew..."
-        brew install gum &>/dev/null && command -v gum &>/dev/null && return 0
-    fi
-
-    # Download static binary from Charm releases
-    local os arch asset tmpdir
-    case "$(uname -s)" in
-        Darwin) os="Darwin" ;;
-        Linux) os="Linux" ;;
-        *) GUM_FALLBACK=1; return 1 ;;
-    esac
-    case "$(uname -m)" in
-        x86_64|amd64) arch="x86_64" ;;
-        aarch64|arm64) arch="arm64" ;;
-        *) GUM_FALLBACK=1; return 1 ;;
-    esac
-
-    asset="gum_${os}_${arch}.tar.gz"
-    tmpdir="$(mktemp -d)"
-    if curl -fsSL --connect-timeout 5 --max-time 30 \
-        "https://github.com/charmbracelet/gum/releases/latest/download/${asset}" \
-        -o "$tmpdir/gum.tgz" 2>/dev/null; then
-        tar -xzf "$tmpdir/gum.tgz" -C "$tmpdir" 2>/dev/null
-        local gum_bin
-        gum_bin="$(find "$tmpdir" -type f -name gum | head -1)"
-        if [[ -n "$gum_bin" ]]; then
-            mkdir -p "$scripts_bin"
-            cp "$gum_bin" "$scripts_bin/gum"
-            chmod +x "$scripts_bin/gum"
-            export PATH="$scripts_bin:$PATH"
-            rm -rf "$tmpdir"
-            return 0
-        fi
-    fi
-    rm -rf "$tmpdir"
     GUM_FALLBACK=1
     return 1
 }

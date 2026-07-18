@@ -269,15 +269,32 @@ catalog_pkg_spec() {
 catalog_has_update() {
     local id="$1"
     local spec kind pkg
-    spec="$(catalog_pkg_spec "$id")" || return 1
-    kind="${spec%%|*}"
-    pkg="${spec#*|}"
-    pkgmgr_package_outdated "$kind" "$pkg"
+
+    # Package-manager packages: only when outdated
+    if spec="$(catalog_pkg_spec "$id")"; then
+        kind="${spec%%|*}"
+        pkg="${spec#*|}"
+        pkgmgr_package_outdated "$kind" "$pkg"
+        return $?
+    fi
+
+    # Script-managed items that opt into “offer re-run / update”
+    if [[ "$(catalog_get "$id" upgrade_offer)" == "always" ]]; then
+        local upgrade_cmd
+        upgrade_cmd="$(catalog_resolve_upgrade_cmd "$id")"
+        [[ -n "$upgrade_cmd" ]]
+        return $?
+    fi
+    return 1
 }
 
 catalog_resolve_upgrade_cmd() {
     local id="$1"
     local explicit
+
+    explicit="$(catalog_get "$id" upgrade_script)"
+    [[ -n "$explicit" ]] && { echo "$explicit"; return 0; }
+
     if [[ "${PKG_MGR:-}" == "brew" ]]; then
         explicit="$(catalog_get "$id" upgrade_brew)"
         [[ -n "$explicit" ]] && { echo "$explicit"; return 0; }

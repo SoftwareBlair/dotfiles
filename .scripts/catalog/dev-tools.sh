@@ -1,5 +1,5 @@
 #!/bin/bash
-# Developer software catalog
+# Developer software catalog — tools used by MY_SETUP
 
 catalog_register "cursor" \
     "name=Cursor" \
@@ -68,45 +68,11 @@ catalog_register "zed" \
     "install_script=curl -f https://zed.dev/install.sh | sh" \
     "uninstall_brew=brew uninstall --cask zed || brew uninstall zed" \
     "uninstall_script=rm -rf ~/.local/zed.app ~/.local/bin/zed" \
+    "upgrade_script=curl -f https://zed.dev/install.sh | sh" \
+    "upgrade_offer=always" \
     "install_dest_macos=/Applications/Zed.app" \
     "install_dest_linux=~/.local/bin/zed" \
-    "post_symlink=.config/zed" \
     "install_requires_sudo=false"
-
-catalog_register "github_cli" \
-    "name=GitHub CLI" \
-    "category=dev-tools" \
-    "platforms=macos,linux" \
-    "description=gh command-line tool" \
-    "check=command -v gh" \
-    "install_brew_macos=brew install gh" \
-    "install_brew_linux=brew install gh" \
-    "install_apt=sudo apt-get install -y gh" \
-    "install_dnf=sudo dnf install -y gh" \
-    "install_pacman=sudo pacman -S --noconfirm github-cli" \
-    "uninstall_brew=brew uninstall gh" \
-    "uninstall_apt=sudo apt-get remove -y gh" \
-    "uninstall_dnf=sudo dnf remove -y gh" \
-    "uninstall_pacman=sudo pacman -R --noconfirm github-cli" \
-    "install_dest=gh in PATH" \
-    "install_requires_sudo=true"
-
-catalog_register "git" \
-    "name=Git" \
-    "category=dev-tools" \
-    "platforms=macos,linux" \
-    "description=Version control (skip if already present)" \
-    "check=command -v git" \
-    "install_brew_macos=brew install git" \
-    "install_brew_linux=brew install git" \
-    "install_apt=sudo apt-get install -y git" \
-    "install_dnf=sudo dnf install -y git" \
-    "install_pacman=sudo pacman -S --noconfirm git" \
-    "uninstall_brew=brew uninstall git" \
-    "uninstall_apt=sudo apt-get remove -y git" \
-    "uninstall_dnf=sudo dnf remove -y git" \
-    "uninstall_pacman=sudo pacman -R --noconfirm git" \
-    "install_requires_sudo=true"
 
 catalog_register "raycast" \
     "name=Raycast" \

@@ -1,6 +1,6 @@
-# My machine setup (macOS + Linux)
+# New machine setup (macOS + Linux)
 
-Personal dotfiles plus a setup script that installs **my usual stack**, then symlinks this repo’s configs into `$HOME`.
+Personal dotfiles plus a setup script that installs **your usual stack**, then symlinks this repo’s configs into `$HOME`.
 
 ## Quick start
 
@@ -11,7 +11,7 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-Confirm once and it installs. If something is already present and the package manager reports an update, you’ll be offered a chance to upgrade it (auto-accepted with `-y`).
+Confirm once and it installs. If something is already present and an update is available, you’ll be offered a chance to upgrade it (auto-accepted with `-y`).
 
 The repo can live **anywhere**; moving to `~/dotfiles` is optional.
 
@@ -40,12 +40,12 @@ Defined in [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh):
 
 | Item | Notes |
 |------|--------|
-| SFMono Nerd Font | Terminal / editor font |
+| SFMono Nerd Font | Patched + ligaturized (not Apple’s stock SF Mono) |
 | Starship | Prompt (via this repo’s `.zshrc`) |
 | eza | `ls` replacement |
 | Warp | Terminal (+ `.warp` config) |
 | **Cursor** | Default editor |
-| Zed | Fast editor (+ `.config/zed`) |
+| Zed | Fast editor (settings under `.config/zed`) |
 | zsh + autosuggestions + syntax-highlighting + z | Shell plugins |
 | NVM | Node version manager |
 | Raycast | macOS only (`MY_SETUP_MACOS`) |
@@ -57,41 +57,32 @@ To change the stack, edit `MY_SETUP`, `MY_SETUP_MACOS`, or `MY_SETUP_OPTIONAL` i
 
 | Manager | macOS | Linux |
 |---------|-------|-------|
-| Homebrew (default) | Yes | Yes (Linuxbrew) |
-| apt | — | Debian / Ubuntu |
+| Homebrew | Yes (preferred when installed) | Yes (Linuxbrew) |
+| apt | — | Debian / Ubuntu (used by `-y` if brew missing) |
 | dnf | — | Fedora / RHEL |
 | pacman | — | Arch |
 
-Homebrew is preferred so Mac and Linux stay close to the same workflow.
-
 ### Updates for already-installed tools
 
-During setup, anything already installed is checked for updates via the active package manager:
+| Kind | Behavior |
+|------|----------|
+| brew / apt / dnf / pacman packages | Detect outdated → offer upgrade |
+| Script installs (NVM, SFMono, some Zed/Starship paths) | Offer re-run update when marked `upgrade_offer=always` |
 
-| Manager | How updates are detected |
-|---------|--------------------------|
-| Homebrew | `brew outdated` (formula / cask) |
-| apt | Installed vs candidate version |
-| dnf | `dnf check-update` |
-| pacman | `pacman -Qu` |
-
-If updates are available, setup lists them and asks once: **Update these packages now?** (`-y` accepts). Version bumps are logged as `upgrade` actions and are **not** uninstalled by `--undo`.
-
-Script-only installs (e.g. NVM curl installer, some font downloads) can’t always detect updates and are left as-is when already present.
+`-y` accepts the upgrade prompt. Upgrades are logged but **not** uninstalled by `--undo`.
 
 ## Dotfiles linked
 
 Symlinked into `$HOME` (not copied):
 
-- `.zshrc`, `.zshenv`, `.config`
+- `.zshrc`, `.zshenv`, `.config` (includes Starship + Zed)
 - `.warp` when Warp is installed
-- `.config/zed` when Zed is installed
 
 Shell feature flags are written to `~/.dotfiles-setup/shell-features.zsh` and sourced by [`.zshrc`](.zshrc).
 
 ### Secrets (`~/.zprofile`)
 
-Setup can create or extend **`~/.zprofile`** on your machine for local secrets (API keys, tokens). That file lives in your home directory — outside this repo — so it is never committed with your dotfiles.
+Setup can create or extend **`~/.zprofile`** for local secrets (API keys, tokens). That file lives in your home directory — outside this repo. Non-login shells also load it via [`.zshrc`](.zshrc).
 
 ### Repo layout
 
@@ -105,7 +96,7 @@ Setup can create or extend **`~/.zprofile`** on your machine for local secrets (
 | [`.warp/`](.warp/) | Warp settings / themes |
 | [`.scripts/setup.sh`](.scripts/setup.sh) | Installer entrypoint |
 | [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) | Default stack definition |
-| [`.scripts/catalog/`](.scripts/catalog/) | Install recipes (fonts, editors, shells, …) |
+| [`.scripts/catalog/`](.scripts/catalog/) | Install recipes |
 
 ## Undo
 
@@ -116,13 +107,7 @@ Setup can create or extend **`~/.zprofile`** on your machine for local secrets (
 ./setup.sh -c revert_setup
 ```
 
-Reverses actions recorded in the install log, including:
-
-- Package installs owned by this script
-- **Symlinks** created by setup (and restores backups when present)
-- Repo files / config blocks the script added (e.g. brew shellenv marker)
-
-`~/.gitconfig` is never deleted. Homebrew removal is opt-in when prompted.
+Reverses actions recorded in the install log, including package installs, **symlinks** (with backups), and config blocks setup added. `~/.gitconfig` is never deleted. Homebrew removal is opt-in.
 
 ## Helper commands (`-c`)
 
@@ -147,16 +132,20 @@ Reverses actions recorded in the install log, including:
 | `--select` | With `--undo`, choose which actions to reverse |
 | `-c <command>` | Run a helper (see above) |
 
-Legacy `--preset` / `--plan` / `--export-plan` flags are ignored (kept so older scripts don’t break).
-
 ## State files
 
 ```text
 ~/.dotfiles-setup/
   install-log.jsonl      # undo source of truth
-  shell-features.zsh     # DOTFILES_DIR, Starship / OMZ flags
+  shell-features.zsh     # DOTFILES_DIR, Starship flags
   backups/               # pre-overwrite backups
 ~/.dotfiles-setup.conf   # last package manager preference
+```
+
+## Lint
+
+```bash
+./.scripts/check.sh      # shellcheck when installed
 ```
 
 ## Troubleshooting
@@ -164,9 +153,10 @@ Legacy `--preset` / `--plan` / `--export-plan` flags are ignored (kept so older 
 | Issue | What to try |
 |-------|-------------|
 | Prompt not showing Starship | Check `~/.dotfiles-setup/shell-features.zsh`, then restart the terminal |
-| Missing glyphs / icons | Set the terminal font to a Nerd Font (e.g. SFMono Nerd Font) |
+| Missing glyphs / icons | Set the terminal font to **SFMono Nerd Font** (Liga SFMono) |
+| Secrets missing in terminal | Confirm `~/.zprofile` has the secrets block; restart (non-login shells load it via `.zshrc`) |
 | Wrong repo path after moving | Re-run `./setup.sh` (or `-y`) so `DOTFILES_DIR` is rewritten |
-| Undo didn’t remove a symlink | It only removes paths still logged as symlinks; already-correct links skipped at install may not be logged |
+| Undo didn’t remove a symlink | Only logged symlink actions are reversed |
 
 ## License
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup my usual machine
+# New machine setup
 set -uo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,6 +44,11 @@ usage() {
     echo -e "${d}────────────────────────────────────────${o}"
     echo -e "  Installs preferred stack, then links this repo’s configs."
     echo ""
+    echo -e "  ${w}Includes${o}"
+    echo -e "    ${d}editors${o}   ${HELP_INCLUDES_EDITORS:-Cursor, Zed}"
+    echo -e "    ${d}terminal${o}  ${HELP_INCLUDES_TERMINAL:-Warp · SFMono · Starship · eza}"
+    echo -e "    ${d}shell${o}     ${HELP_INCLUDES_SHELL:-zsh + plugins · NVM}"
+    echo ""
     echo -e "  ${w}Usage${o}"
     echo -e "    ${g}./setup.sh${o}                   Confirm, then install"
     echo -e "    ${g}./setup.sh -y${o}                Non-interactive"
@@ -56,7 +61,7 @@ usage() {
     echo -e "    ${g}./setup.sh -c${o} ${d}<helper>${o}       move_dotfiles · revert_setup · …"
     echo ""
     echo -e "  ${w}Defaults${o}"
-    echo -e "    ${d}pkgmgr${o}    Homebrew"
+    echo -e "    ${d}pkgmgr${o}    Homebrew (system manager on Linux if brew missing)"
     echo -e "    ${d}editor${o}    Cursor"
     echo -e "    ${d}prompt${o}    Starship + this repo’s .zshrc"
     echo -e "    ${d}dotfiles${o}  Symlink (repo can live anywhere)"
@@ -77,14 +82,20 @@ parse_args() {
             -n|--dry-run) DRY_RUN=1; shift ;;
             --undo) UNDO_MODE=1; shift ;;
             --select) UNDO_SELECT=true; shift ;;
-            --pkgmgr) PKG_MGR_FLAG="${2:-}"; shift 2 ;;
-            # Ignored legacy flags (kept so old docs/scripts don’t break)
-            --preset|--plan|--export-plan)
-                shift
-                [[ $# -gt 0 && "$1" != -* ]] && shift
+            --pkgmgr)
+                PKG_MGR_FLAG="${2:-}"
+                if [[ -z "$PKG_MGR_FLAG" ]]; then
+                    echo "Missing value for --pkgmgr" >&2
+                    exit 1
+                fi
+                shift 2
                 ;;
             -c)
                 RUN_COMMAND="${2:-}"
+                if [[ -z "$RUN_COMMAND" ]]; then
+                    echo "Missing value for -c" >&2
+                    exit 1
+                fi
                 shift 2
                 RUN_COMMAND_ARGS=("$@")
                 return 0
@@ -98,15 +109,28 @@ parse_args() {
     done
 }
 
+# Prefer brew when present; otherwise the native Linux manager
+default_pkgmgr() {
+    if ensure_brew_shellenv 2>/dev/null || command -v brew &>/dev/null; then
+        echo "brew"
+        return
+    fi
+    if [[ "${PLATFORM:-}" == "linux" ]]; then
+        command -v apt-get &>/dev/null && { echo "apt"; return; }
+        command -v dnf &>/dev/null && { echo "dnf"; return; }
+        command -v pacman &>/dev/null && { echo "pacman"; return; }
+    fi
+    echo "brew"
+}
+
 pick_pkgmgr() {
     if [[ -n "$PKG_MGR_FLAG" ]]; then
         PKG_MGR="$PKG_MGR_FLAG"
         return 0
     fi
     load_setup_prefs
-    # Prefer Homebrew for reliability / parity with the Mac workflow
     if [[ -n "${YES_MODE:-}" ]]; then
-        PKG_MGR="${PKG_MGR:-brew}"
+        PKG_MGR="${PKG_MGR:-$(default_pkgmgr)}"
         return 0
     fi
     local options=("Homebrew (brew)  [default]")
@@ -130,24 +154,21 @@ pick_pkgmgr() {
 }
 
 set_default_symlinks() {
+    # .config covers starship.toml and .config/zed — no nested duplicate
     SYMLINK_TARGETS=(".zshrc" ".zshenv" ".config")
     [[ " ${SELECTED_IDS[*]} " == *" warp "* ]] && SYMLINK_TARGETS+=(".warp")
-    [[ " ${SELECTED_IDS[*]} " == *" zed "* ]] && SYMLINK_TARGETS+=(".config/zed")
-    # starship.toml is inside .config — also link explicitly if .config is a dir merge case
     LINK_MODE="symlink"
     SHELL_PROFILE_MODE="starship"
 }
 
 run_setup() {
-    init_platform
     state_init
     load_setup_prefs
     ensure_gum || prompt_warn "Using basic prompts (gum not available)."
-    load_catalogs
 
     prompt_welcome "New machine setup" "$(platform_label)"
     prompt_info "Dotfiles: $DOTFILES_DIR"
-    prompt_info "Stack: SFMono, Cursor, Warp, Zed, Starship, eza, …"
+    prompt_info "Stack: ${HELP_INCLUDES_TERMINAL:-SFMono, Starship, eza, …} · Cursor · Zed"
 
     if [[ "$DOTFILES_DIR" != "$HOME/dotfiles" && -z "${YES_MODE:-}" ]]; then
         if prompt_confirm "Move repo to ~/dotfiles? (optional — works from any path)" "false"; then
@@ -156,13 +177,12 @@ run_setup() {
         fi
     fi
 
-    # Resume shortcut
     local count
     count="$(state_log_count)"
     if [[ "$count" -gt 0 && -z "${YES_MODE:-}" && -z "$DRY_RUN" ]]; then
         local resume
         resume="$(prompt_choose_one "Previous setup found ($count actions). What next?" \
-            "Re-run my usual setup  [default]" \
+            "Re-run new machine setup  [default]" \
             "Undo previous setup" \
             "Cancel")"
         case "$resume" in
@@ -174,7 +194,6 @@ run_setup() {
     pick_pkgmgr
     prompt_info "Package manager: $PKG_MGR"
 
-    # Start the plan early so brew bootstrap / prereqs are included
     if dry_run_is_active; then
         dry_run_begin_plan
     fi
@@ -204,14 +223,12 @@ run_setup() {
             fi
             DRY_RUN=1
             dry_run_begin_plan
-            # Re-record brew bootstrap if it would still be needed
             if [[ "$PKG_MGR" == "brew" ]] && ! ensure_brew_shellenv; then
                 ensure_pkgmgr "$PKG_MGR"
             fi
         fi
     fi
 
-    # Build / show plan
     if dry_run_is_active; then
         install_prerequisites
         installer_plan_selections
@@ -223,13 +240,12 @@ run_setup() {
         configure_starship
         offer_secrets_zprofile
         [[ -n "${SELECTED_SHELL:-}" ]] && maybe_chsh "$SELECTED_SHELL"
-        dry_run_print_plan "My setup plan"
+        dry_run_print_plan "New machine setup plan"
         prompt_info "Dry run complete — no changes made."
         save_setup_prefs
         exit 0
     fi
 
-    # Install
     INSTALL_REPORT_OK=()
     INSTALL_REPORT_SKIP=()
     INSTALL_REPORT_FAIL=()
@@ -243,7 +259,6 @@ run_setup() {
     done
     write_shell_features
     configure_starship
-    configure_oh_my_zsh_profile
     offer_secrets_zprofile
     if [[ -n "${SELECTED_SHELL:-}" ]]; then
         maybe_chsh "$SELECTED_SHELL"
@@ -265,7 +280,7 @@ if [[ -n "$UNDO_MODE" ]]; then
         PKG_MGR="$PKG_MGR_FLAG"
     else
         load_setup_prefs
-        PKG_MGR="${PKG_MGR:-brew}"
+        PKG_MGR="${PKG_MGR:-$(default_pkgmgr)}"
         ensure_brew_shellenv || true
     fi
     run_undo "${UNDO_SELECT:-false}"
