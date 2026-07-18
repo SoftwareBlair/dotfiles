@@ -36,37 +36,42 @@ PKG_MGR_FLAG=""
 RUN_COMMAND=""
 
 usage() {
-    cat <<'EOF'
-Setup my usual machine (macOS + Linux)
+    local b="${BCyan:-}" d="${BrBlack:-}" o="${Off:-}"
+    local w="${BWhite:-}" g="${Green:-}"
 
-Installs my usual stack:
-  SFMono Nerd Font, Starship, eza, Warp, Cursor (default editor), Zed,
-  zsh plugins, NVM, Raycast (macOS), VS Code when available —
-  then links this repo’s configs.
-
-Usage:
-  ./setup.sh                 Interactive: confirm, then install
-  ./setup.sh -y              Non-interactive install
-  ./setup.sh -n              Dry-run (show plan, change nothing)
-  ./setup.sh -y -n           Non-interactive dry-run
-  ./setup.sh --undo          Undo logged installs + symlinks
-  ./setup.sh --undo -n       Preview undo
-  ./setup.sh --undo --select Pick which logged actions to reverse
-  ./setup.sh --pkgmgr brew|apt|dnf|pacman
-  ./setup.sh -c <helper>     move_dotfiles | revert_setup |
-                             symlink_dotfile | unlink_dotfile | …
-
-Defaults:
-  • Package manager: Homebrew (Mac workflow; works on Linux too)
-  • Editor: Cursor (VS Code optional when available)
-  • Shell profile: Starship + this repo’s .zshrc
-  • Dotfiles: symlink from this repo (any path; ~/dotfiles not required)
-  • Already installed: offer upgrade when the package manager has an update
-
-Customize stack: edit MY_SETUP in .scripts/lib/presets.sh
-State: ~/.dotfiles-setup/  (install log, features, backups)
-See README.md for full docs.
-EOF
+    echo ""
+    echo -e "${b}New machine setup${o}  ${d}macOS + Linux${o}"
+    echo -e "${d}────────────────────────────────────────${o}"
+    echo -e "  Installs your stack, then links this repo’s configs."
+    echo ""
+    echo -e "  ${w}Includes${o}"
+    echo -e "    ${d}editors${o}   Cursor (default), Zed · VS Code optional"
+    echo -e "    ${d}terminal${o}  Warp · SFMono · Starship · eza"
+    echo -e "    ${d}shell${o}     zsh + plugins · NVM · Raycast (macOS)"
+    echo ""
+    echo -e "  ${w}Usage${o}"
+    echo -e "    ${g}./setup.sh${o}                  Confirm, then install"
+    echo -e "    ${g}./setup.sh -y${o}               Non-interactive"
+    echo -e "    ${g}./setup.sh -n${o}               Dry-run (preview only)"
+    echo -e "    ${g}./setup.sh -y -n${o}            Non-interactive dry-run"
+    echo -e "    ${g}./setup.sh --undo${o}           Reverse logged actions"
+    echo -e "    ${g}./setup.sh --undo -n${o}        Preview undo"
+    echo -e "    ${g}./setup.sh --undo --select${o}  Choose what to reverse"
+    echo -e "    ${g}./setup.sh --pkgmgr${o} ${d}<name>${o}   brew · apt · dnf · pacman"
+    echo -e "    ${g}./setup.sh -c${o} ${d}<helper>${o}      move_dotfiles · revert_setup · …"
+    echo ""
+    echo -e "  ${w}Defaults${o}"
+    echo -e "    ${d}pkgmgr${o}    Homebrew"
+    echo -e "    ${d}editor${o}    Cursor"
+    echo -e "    ${d}prompt${o}    Starship + this repo’s .zshrc"
+    echo -e "    ${d}dotfiles${o}  Symlink (repo can live anywhere)"
+    echo -e "    ${d}updates${o}   Offer upgrade when already installed"
+    echo ""
+    echo -e "  ${w}More${o}"
+    echo -e "    ${d}stack${o}     edit MY_SETUP in .scripts/lib/presets.sh"
+    echo -e "    ${d}state${o}     ~/.dotfiles-setup/"
+    echo -e "    ${d}docs${o}      README.md"
+    echo ""
 }
 
 parse_args() {
