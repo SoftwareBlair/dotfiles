@@ -18,3 +18,9 @@ if [[ -n "${DOTFILES_DIR:-}" ]]; then
 else
   export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$HOME/dotfiles/.config/starship.toml}"
 fi
+
+# Local secrets (repo-root .zprofile — gitignored, never committed)
+if [[ -n "${DOTFILES_DIR:-}" && -f "$DOTFILES_DIR/.zprofile" ]]; then
+  # shellcheck disable=SC1091
+  source "$DOTFILES_DIR/.zprofile"
+fi

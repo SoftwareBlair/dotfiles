@@ -221,6 +221,7 @@ run_setup() {
         done
         write_shell_features
         configure_starship
+        offer_secrets_zprofile
         [[ -n "${SELECTED_SHELL:-}" ]] && maybe_chsh "$SELECTED_SHELL"
         dry_run_print_plan "My setup plan"
         prompt_info "Dry run complete — no changes made."
@@ -243,6 +244,7 @@ run_setup() {
     write_shell_features
     configure_starship
     configure_oh_my_zsh_profile
+    offer_secrets_zprofile
     if [[ -n "${SELECTED_SHELL:-}" ]]; then
         maybe_chsh "$SELECTED_SHELL"
     fi

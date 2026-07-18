@@ -262,6 +262,60 @@ install_dotfile_path() {
     fi
 }
 
+# Offer an untracked repo-root .zprofile for local secrets (API keys, tokens)
+offer_secrets_zprofile() {
+    local df secrets_file
+    df="$(resolve_dotfiles_dir)"
+    secrets_file="$df/.zprofile"
+
+    if [[ -f "$secrets_file" ]]; then
+        prompt_info "Secrets file already present: $secrets_file (gitignored)."
+        report_config "Secrets .zprofile already exists (gitignored)" 2>/dev/null || true
+        return 0
+    fi
+
+    if dry_run_is_active; then
+        dry_run_add_step "Create secrets .zprofile" \
+            "write $secrets_file (gitignored template for API keys / tokens)" \
+            "$secrets_file" "sourced by .zshenv; never committed" "false" ""
+        return 0
+    fi
+
+    prompt_style "── Local secrets ──"
+    prompt_info "You can keep API keys and tokens in a repo-root .zprofile that git ignores."
+    if ! prompt_confirm "Create an untracked .zprofile for secrets?" "true"; then
+        prompt_warn "Skipping secrets .zprofile."
+        report_skip "secrets .zprofile" 2>/dev/null || true
+        return 0
+    fi
+
+    cat > "$secrets_file" <<'EOF'
+# Local secrets — gitignored (never commit this file)
+# Sourced early via .zshenv when DOTFILES_DIR is set.
+#
+# Examples:
+# export OPENAI_API_KEY="…"
+# export ANTHROPIC_API_KEY="…"
+# export GH_TOKEN="…"
+EOF
+
+    # Ensure .gitignore covers it (idempotent)
+    local gi="$df/.gitignore"
+    if [[ -f "$gi" ]] && ! grep -qxF '.zprofile' "$gi" 2>/dev/null; then
+        {
+            echo ""
+            echo "# Local secrets — never commit"
+            echo ".zprofile"
+        } >> "$gi"
+    fi
+
+    state_log_install "secrets-zprofile" "Secrets .zprofile" "config" \
+        "write $secrets_file" "$secrets_file" "gitignored local secrets" "" "" ""
+    prompt_success "Created $secrets_file (gitignored)."
+    prompt_info "Add exports there, then restart your terminal (or: source $secrets_file)."
+    report_config "Created gitignored .zprofile for secrets" 2>/dev/null || true
+}
+
 print_final_report() {
     echo ""
     prompt_style "── Setup report ──"
@@ -293,7 +347,12 @@ print_final_report() {
         echo "  2. Set your terminal font to a Nerd Font (e.g. SFMono Nerd Font)"
     fi
     echo "  3. Review: $STATE_DIR/shell-features.zsh"
-    echo "  4. Undo later: ./setup.sh --undo"
+    if [[ -f "$(resolve_dotfiles_dir)/.zprofile" ]]; then
+        echo "  4. Add secrets to $(resolve_dotfiles_dir)/.zprofile (gitignored)"
+        echo "  5. Undo later: ./setup.sh --undo"
+    else
+        echo "  4. Undo later: ./setup.sh --undo"
+    fi
     echo ""
 }
 
