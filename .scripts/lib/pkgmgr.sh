@@ -172,6 +172,29 @@ pkgmgr_upgrade() {
     esac
 }
 
+# Setup Cursor apt repo (https://downloads.cursor.com/aptrepo)
+setup_cursor_apt_repo() {
+    local cmd='sudo apt-get install -y curl gpg && sudo mkdir -p /etc/apt/keyrings && curl -fsSL https://downloads.cursor.com/keys/anysphere.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/cursor.gpg > /dev/null && echo "deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/cursor.gpg] https://downloads.cursor.com/aptrepo stable main" | sudo tee /etc/apt/sources.list.d/cursor.list > /dev/null && sudo apt-get update'
+    if dry_run_is_active; then
+        dry_run_add_step "Cursor apt repo" "$cmd" "/etc/apt/sources.list.d/cursor.list" "adds Cursor apt repo" "true" ""
+        return 0
+    fi
+    eval "$cmd"
+    state_log_install "cursor-apt-repo" "Cursor apt repo" "repo" "$cmd" \
+        "/etc/apt/sources.list.d/cursor.list" "/etc/apt/sources.list.d/cursor.list" "" "" ""
+}
+
+setup_cursor_dnf_repo() {
+    local cmd='sudo sh -c '"'"'echo -e "[cursor]\nname=Cursor\nbaseurl=https://downloads.cursor.com/yumrepo\nenabled=1\ngpgcheck=1\ngpgkey=https://downloads.cursor.com/keys/anysphere.asc" > /etc/yum.repos.d/cursor.repo'"'"''
+    if dry_run_is_active; then
+        dry_run_add_step "Cursor dnf repo" "$cmd" "/etc/yum.repos.d/cursor.repo" "adds Cursor dnf repo" "true" ""
+        return 0
+    fi
+    eval "$cmd"
+    state_log_install "cursor-dnf-repo" "Cursor dnf repo" "repo" "$cmd" \
+        "/etc/yum.repos.d/cursor.repo" "/etc/yum.repos.d/cursor.repo" "" "" ""
+}
+
 # Setup Microsoft VS Code apt repo
 setup_vscode_apt_repo() {
     local cmd='wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /tmp/packages.microsoft.gpg && sudo install -D -o root -g root -m 644 /tmp/packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg && sudo sh -c '"'"'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'"'"' && sudo apt-get update'

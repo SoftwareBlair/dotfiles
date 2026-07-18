@@ -180,11 +180,14 @@ configure_git_interactive() {
     git config --global init.defaultBranch main
     git config --global alias.hist 'log --pretty=format:"%h %ad | %s%d [%an]" --graph --date=short'
 
-    if prompt_confirm "Set VS Code as preferred editor?" "false"; then
-        if command -v code &>/dev/null; then
+    if prompt_confirm "Set Cursor as preferred Git editor?" "true"; then
+        if command -v cursor &>/dev/null; then
+            git config --global core.editor "cursor --wait"
+        elif command -v code &>/dev/null; then
             git config --global core.editor "code --wait"
+            prompt_info "Cursor not found; using VS Code for core.editor."
         else
-            prompt_warn "VS Code not found; skipping editor setting."
+            prompt_warn "Cursor/VS Code not found; skipping editor setting."
         fi
     fi
 

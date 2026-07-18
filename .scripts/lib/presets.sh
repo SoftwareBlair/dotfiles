@@ -1,13 +1,13 @@
 #!/bin/bash
 # Your usual setup — aligned with improvements-while-using (+ SFMono, Zed)
 
-# Core tools you rely on every machine
-MY_SETUP="sfmono_nerd starship eza warp zed zsh nvm zsh_autosuggestions zsh_syntax_highlighting z"
+# Core tools you rely on every machine (Cursor is the default editor)
+MY_SETUP="sfmono_nerd starship eza warp cursor zed zsh nvm zsh_autosuggestions zsh_syntax_highlighting z"
 
 # macOS-only extras from your improvements branch
 MY_SETUP_MACOS="raycast"
 
-# Optional but commonly used with your git/editor flow
+# Optional extras when a recipe is available for this OS / pkgmgr
 MY_SETUP_OPTIONAL="vscode"
 
 PRESET_NAME="mine"

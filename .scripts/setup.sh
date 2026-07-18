@@ -40,8 +40,9 @@ usage() {
 Setup my usual machine (macOS + Linux)
 
 Installs the same stack you use on improvements-while-using:
-  SFMono Nerd Font, Starship, eza, Warp, Zed, zsh plugins, NVM,
-  Raycast (macOS), VS Code when available — then links this repo’s configs.
+  SFMono Nerd Font, Starship, eza, Warp, Cursor (default editor), Zed,
+  zsh plugins, NVM, Raycast (macOS), VS Code when available —
+  then links this repo’s configs.
 
 Usage:
   ./setup.sh              Interactive: confirm, then install
@@ -140,7 +141,7 @@ run_setup() {
 
     prompt_welcome "My machine setup" "$(platform_label)"
     prompt_info "Dotfiles: $DOTFILES_DIR"
-    prompt_info "Stack: improvements-while-using (SFMono, Warp, Zed, Starship, eza, …)"
+    prompt_info "Stack: improvements-while-using (SFMono, Cursor, Warp, Zed, Starship, eza, …)"
 
     if [[ "$DOTFILES_DIR" != "$HOME/dotfiles" && -z "${YES_MODE:-}" ]]; then
         if prompt_confirm "Move repo to ~/dotfiles? (optional — works from any path)" "false"; then

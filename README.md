@@ -1,6 +1,6 @@
 # My machine setup (macOS + Linux)
 
-Installs **my usual stack** from the `improvements-while-using` workflow — fonts, Warp, Zed, Starship, eza, zsh plugins, NVM — then symlinks this repo’s configs.
+Installs **my usual stack** from the `improvements-while-using` workflow — fonts, Warp, **Cursor** (default editor), Zed, Starship, eza, zsh plugins, NVM — then symlinks this repo’s configs.
 
 **Windows is not supported.**
 
@@ -35,11 +35,12 @@ Defined in [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) as `MY_SETUP`:
 | Starship | Prompt (via this repo’s `.zshrc`) |
 | eza | `ls` replacement |
 | Warp | Terminal |
-| Zed | Editor (+ `.config/zed`) |
+| Cursor | Default editor |
+| Zed | Fast editor (+ `.config/zed`) |
 | zsh + autosuggestions + syntax-highlighting + z | Shell plugins |
 | NVM | Node version manager |
 | Raycast | macOS only |
-| VS Code | When an install recipe is available |
+| VS Code | Optional, when a recipe is available |
 
 To change the stack, edit `MY_SETUP` / `MY_SETUP_MACOS` / `MY_SETUP_OPTIONAL` in `presets.sh`.
 

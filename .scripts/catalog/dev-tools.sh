@@ -1,11 +1,29 @@
 #!/bin/bash
 # Developer software catalog
 
+catalog_register "cursor" \
+    "name=Cursor" \
+    "category=dev-tools" \
+    "platforms=macos,linux" \
+    "description=Default AI code editor" \
+    "check=command -v cursor || test -d /Applications/Cursor.app" \
+    "install_brew_macos=brew install --cask cursor" \
+    "install_brew_linux=brew install --cask cursor" \
+    "install_apt=setup_cursor_apt_repo && sudo apt-get install -y cursor" \
+    "install_dnf=setup_cursor_dnf_repo && sudo dnf install -y cursor" \
+    "uninstall_brew=brew uninstall --cask cursor" \
+    "uninstall_apt=sudo apt-get remove -y cursor" \
+    "uninstall_dnf=sudo dnf remove -y cursor" \
+    "install_dest_macos=/Applications/Cursor.app" \
+    "install_dest_linux=/usr/bin/cursor" \
+    "install_side_effects=may add Cursor apt/dnf repo" \
+    "install_requires_sudo=true"
+
 catalog_register "vscode" \
     "name=VS Code" \
     "category=dev-tools" \
     "platforms=macos,linux" \
-    "description=Popular code editor" \
+    "description=Popular code editor (optional)" \
     "check=command -v code" \
     "install_brew_macos=brew install --cask visual-studio-code" \
     "install_brew_linux=brew install --cask visual-studio-code" \
