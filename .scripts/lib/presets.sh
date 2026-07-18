@@ -1,5 +1,5 @@
 #!/bin/bash
-# Your usual setup — aligned with improvements-while-using (+ SFMono, Zed)
+# Your usual setup
 
 # Core tools you rely on every machine (Cursor is the default editor)
 MY_SETUP="sfmono_nerd starship eza warp cursor zed zsh nvm zsh_autosuggestions zsh_syntax_highlighting z"

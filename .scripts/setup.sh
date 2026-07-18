@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup my usual machine — based on improvements-while-using
+# Setup my usual machine
 set -uo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
