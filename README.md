@@ -33,7 +33,7 @@ Restart your terminal when finished.
 
 | Preset | Includes |
 |--------|----------|
-| **personal** | SFMono + JetBrains Mono, VS Code, Warp, Zed, zsh, Starship, eza, NVM, plugins, fzf, zoxide |
+| **personal** | SFMono, VS Code, Warp, Zed, zsh, Starship, eza, NVM, plugins, fzf, zoxide |
 | **minimal** | zsh + Starship + eza |
 | **full** | Everything available for this OS / package manager |
 | **custom** | Pick each category interactively |

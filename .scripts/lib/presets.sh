@@ -3,7 +3,7 @@
 
 # Preset IDs (space-separated catalog ids)
 PRESET_MINIMAL="zsh starship eza"
-PRESET_PERSONAL="sfmono_nerd jetbrainsmono_nerd vscode warp zed zsh starship eza nvm zsh_autosuggestions zsh_syntax_highlighting fzf zoxide"
+PRESET_PERSONAL="sfmono_nerd vscode warp zed zsh starship eza nvm zsh_autosuggestions zsh_syntax_highlighting fzf zoxide"
 PRESET_FULL="" # computed: all available for current platform/pkgmgr
 
 PRESET_NAME=""

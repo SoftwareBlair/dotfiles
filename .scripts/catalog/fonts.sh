@@ -29,7 +29,6 @@ _register_nerd_font() {
 _register_nerd_font "sfmono_nerd" "SFMono Nerd Font" "font-sf-mono" "SFMono" "Personal favorite for code"
 _register_nerd_font "hack_nerd" "Hack Nerd Font" "font-hack-nerd-font" "Hack" "Classic coding font with icons"
 _register_nerd_font "firacode_nerd" "FiraCode Nerd Font" "font-fira-code-nerd-font" "FiraCode" "Ligatures for code"
-_register_nerd_font "jetbrainsmono_nerd" "JetBrainsMono Nerd Font" "font-jetbrains-mono-nerd-font" "JetBrainsMono" "JetBrains default coding font"
 _register_nerd_font "meslo_nerd" "Meslo Nerd Font" "font-meslo-lg-nerd-font" "Meslo" "Popular with Powerlevel10k"
 _register_nerd_font "cascadia_nerd" "Cascadia Code Nerd Font" "font-caskaydia-cove-nerd-font" "CascadiaCode" "Microsoft Cascadia with Nerd glyphs"
 

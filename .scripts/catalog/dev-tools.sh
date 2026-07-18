@@ -55,20 +55,6 @@ catalog_register "zed" \
     "post_symlink=.config/zed" \
     "install_requires_sudo=false"
 
-catalog_register "jetbrains_toolbox" \
-    "name=JetBrains Toolbox" \
-    "category=dev-tools" \
-    "platforms=macos,linux" \
-    "description=Install and manage JetBrains IDEs" \
-    "check=test -d /Applications/JetBrains\ Toolbox.app || command -v jetbrains-toolbox" \
-    "install_brew_macos=brew install --cask jetbrains-toolbox" \
-    "install_brew_linux=brew install --cask jetbrains-toolbox" \
-    "install_script=install_jetbrains_toolbox" \
-    "uninstall_brew=brew uninstall --cask jetbrains-toolbox" \
-    "install_dest_macos=/Applications/JetBrains Toolbox.app" \
-    "install_dest_linux=~/.local/share/JetBrains/Toolbox" \
-    "install_requires_sudo=false"
-
 catalog_register "github_cli" \
     "name=GitHub CLI" \
     "category=dev-tools" \
@@ -114,42 +100,3 @@ catalog_register "raycast" \
     "uninstall_brew=brew uninstall --cask raycast" \
     "install_dest_macos=/Applications/Raycast.app" \
     "install_requires_sudo=false"
-
-install_jetbrains_toolbox() {
-    local name="JetBrains Toolbox"
-    local arch_url
-    if [[ "$ARCH" == "arm64" ]]; then
-        arch_url="https://data.services.jetbrains.com/products/download?code=TBA&platform=linuxARM64"
-        [[ "$PLATFORM" == "macos" ]] && arch_url="https://data.services.jetbrains.com/products/download?code=TBA&platform=macM1"
-    else
-        arch_url="https://data.services.jetbrains.com/products/download?code=TBA&platform=linux"
-        [[ "$PLATFORM" == "macos" ]] && arch_url="https://data.services.jetbrains.com/products/download?code=TBA&platform=mac"
-    fi
-
-    local cmd="curl -fsSL \"$arch_url\" -o /tmp/jetbrains-toolbox.tgz && tar -xzf /tmp/jetbrains-toolbox.tgz -C /tmp && TOOLBOX_DIR=\$(find /tmp -maxdepth 1 -type d -name 'jetbrains-toolbox-*' | head -1) && mkdir -p \"\$HOME/.local/share/JetBrains/Toolbox\" && cp -R \"\$TOOLBOX_DIR\"/* \"\$HOME/.local/share/JetBrains/Toolbox/\" && (\"\$HOME/.local/share/JetBrains/Toolbox/bin/jetbrains-toolbox\" &) || true"
-
-    if [[ "$PLATFORM" == "macos" ]]; then
-        cmd="open \"$arch_url\" || curl -fsSL \"$arch_url\" -o /tmp/jetbrains-toolbox.dmg"
-    fi
-
-    if dry_run_is_active; then
-        dry_run_add_step "$name" "$cmd" "$(catalog_install_dest jetbrains_toolbox)" "" "false" ""
-        return 0
-    fi
-
-    if [[ "$PLATFORM" == "macos" ]]; then
-        prompt_info "Downloading JetBrains Toolbox..."
-        curl -fsSL "$arch_url" -o /tmp/jetbrains-toolbox.dmg
-        prompt_info "Open /tmp/jetbrains-toolbox.dmg to finish installing JetBrains Toolbox."
-        open /tmp/jetbrains-toolbox.dmg 2>/dev/null || true
-    else
-        curl -fsSL "$arch_url" -o /tmp/jetbrains-toolbox.tgz
-        tar -xzf /tmp/jetbrains-toolbox.tgz -C /tmp
-        local toolbox_dir
-        toolbox_dir="$(find /tmp -maxdepth 1 -type d -name 'jetbrains-toolbox-*' | head -1)"
-        mkdir -p "$HOME/.local/share/JetBrains/Toolbox"
-        cp -R "$toolbox_dir"/* "$HOME/.local/share/JetBrains/Toolbox/"
-    fi
-    state_log_install "jetbrains_toolbox" "$name" "install" "$cmd" \
-        "$(catalog_install_dest jetbrains_toolbox)" "" "" "" ""
-}
