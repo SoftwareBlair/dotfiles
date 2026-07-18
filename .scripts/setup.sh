@@ -145,7 +145,7 @@ run_setup() {
     ensure_gum || prompt_warn "Using basic prompts (gum not available)."
     load_catalogs
 
-    prompt_welcome "My machine setup" "$(platform_label)"
+    prompt_welcome "New machine setup" "$(platform_label)"
     prompt_info "Dotfiles: $DOTFILES_DIR"
     prompt_info "Stack: improvements-while-using (SFMono, Cursor, Warp, Zed, Starship, eza, …)"
 
