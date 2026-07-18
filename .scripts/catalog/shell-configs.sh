@@ -15,7 +15,7 @@ catalog_register "starship" \
     "uninstall_brew=brew uninstall starship" \
     "uninstall_script=rm -f ~/.local/bin/starship /usr/local/bin/starship" \
     "install_dest=starship in PATH" \
-    "shells=zsh,fish" \
+    "shells=zsh" \
     "install_requires_sudo=false"
 
 catalog_register "oh_my_zsh" \
@@ -46,7 +46,7 @@ catalog_register "eza" \
     "uninstall_dnf=sudo dnf remove -y eza" \
     "uninstall_pacman=sudo pacman -R --noconfirm eza" \
     "install_dest=eza in PATH" \
-    "shells=zsh,fish" \
+    "shells=zsh" \
     "install_requires_sudo=true"
 
 catalog_register "nvm" \
@@ -58,7 +58,7 @@ catalog_register "nvm" \
     "install_script=install_nvm_official" \
     "uninstall_script=uninstall_nvm_official" \
     "install_dest=~/.nvm" \
-    "shells=zsh,fish" \
+    "shells=zsh" \
     "install_requires_sudo=false"
 
 catalog_register "zsh_autosuggestions" \
@@ -121,7 +121,7 @@ catalog_register "fzf" \
     "uninstall_apt=sudo apt-get remove -y fzf" \
     "uninstall_dnf=sudo dnf remove -y fzf" \
     "uninstall_pacman=sudo pacman -R --noconfirm fzf" \
-    "shells=zsh,fish" \
+    "shells=zsh" \
     "install_requires_sudo=true"
 
 catalog_register "zoxide" \
@@ -137,7 +137,7 @@ catalog_register "zoxide" \
     "install_pacman=sudo pacman -S --noconfirm zoxide" \
     "uninstall_brew=brew uninstall zoxide" \
     "uninstall_apt=sudo apt-get remove -y zoxide" \
-    "shells=zsh,fish" \
+    "shells=zsh" \
     "install_requires_sudo=true"
 
 catalog_register "bat" \
@@ -153,7 +153,7 @@ catalog_register "bat" \
     "install_pacman=sudo pacman -S --noconfirm bat" \
     "uninstall_brew=brew uninstall bat" \
     "uninstall_apt=sudo apt-get remove -y bat" \
-    "shells=zsh,fish" \
+    "shells=zsh" \
     "install_requires_sudo=true"
 
 install_oh_my_zsh() {

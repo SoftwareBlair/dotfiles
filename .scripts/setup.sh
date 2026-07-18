@@ -322,7 +322,7 @@ collect_shell() {
 
     labels=("Skip — keep current shell" "${labels[@]}")
     local choice
-    choice="$(prompt_choose_one "Choose a shell (bash is not offered)" "${labels[@]}")"
+    choice="$(prompt_choose_one "Choose a shell (zsh only for now)" "${labels[@]}")"
     if [[ "$choice" == Skip* ]]; then
         SELECTED_SHELL=""
         return 0
@@ -379,7 +379,7 @@ run_category_pickers() {
     collect_shell
 
     prompt_style "── Shell Configuration ──"
-    local shell_filter="zsh,fish"
+    local shell_filter="zsh"
     [[ -n "${SELECTED_SHELL:-}" ]] && shell_filter="$SELECTED_SHELL"
     collect_category "shell-configs" "Select shell tools & configs" "$shell_filter"
 }

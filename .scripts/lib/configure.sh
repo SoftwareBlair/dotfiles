@@ -187,13 +187,12 @@ smart_symlink_defaults() {
         options+=(".config/starship.toml")
 
     # Prefer full .config if many config pieces, else granular
-    if [[ " ${SELECTED_IDS[*]} " == *" zed "* ]] || [[ " ${SELECTED_IDS[*]} " == *" fish "* ]]; then
+    if [[ " ${SELECTED_IDS[*]} " == *" zed "* ]]; then
         options+=(".config")
     fi
 
     [[ " ${SELECTED_IDS[*]} " == *" warp "* ]] && options+=(".warp")
     [[ " ${SELECTED_IDS[*]} " == *" zed "* ]] && options+=(".config/zed")
-    [[ " ${SELECTED_IDS[*]} " == *" fish "* || "${SELECTED_SHELL:-}" == "fish" ]] && options+=(".config/fish")
 
     # Dedupe
     local seen=" "

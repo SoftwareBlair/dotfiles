@@ -1,6 +1,6 @@
 # Developer Machine Setup (macOS + Linux)
 
-Interactive wizard to bootstrap a new developer machine: coding fonts, editors/terminals, shells (**zsh** or **fish**), and shell tools — with your choice of package manager (**Homebrew**, **apt**, **dnf**, or **pacman**).
+Interactive wizard to bootstrap a new developer machine: coding fonts, editors/terminals, **zsh**, and shell tools — with your choice of package manager (**Homebrew**, **apt**, **dnf**, or **pacman**).
 
 Personal dotfiles in this repo can be symlinked or copied. Starship / Oh My Zsh are **installed and configured** (with conflict handling when both are selected).
 
@@ -136,9 +136,9 @@ Plans are also saved to `~/.dotfiles-setup/last-plan.env` after a successful run
 | `.config/starship.toml` | Starship theme |
 | `.config/zed/` | Zed settings (when Zed selected) |
 | `.warp/` | Warp themes (when Warp selected) |
-| `.config/fish/` | Fish stub |
-
 Link mode: **symlink** (default) or **copy**.
+
+Shell support is **zsh only** for now (bash and fish are not offered).
 
 ## State files
 

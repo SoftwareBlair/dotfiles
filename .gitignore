@@ -4,8 +4,6 @@
 
 .config/*
 !.config/starship.toml
-!.config/fish/
-!.config/fish/**
 
 .config/zed/*
 !.config/zed/settings.json
