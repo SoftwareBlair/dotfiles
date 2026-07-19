@@ -297,7 +297,11 @@ prompt_choose_one() {
             [[ "$i" -eq "$default_idx" ]] && continue
             ordered+=("${options[$i]}")
         done
-        printf '%s\n' "${ordered[@]}" | gum choose --header "$header"
+        if [[ -r /dev/tty ]]; then
+            gum choose --header "$header" "${ordered[@]}" </dev/tty
+        else
+            gum choose --header "$header" "${ordered[@]}"
+        fi
         return 0
     fi
 
@@ -321,11 +325,15 @@ prompt_choose_one() {
 }
 
 # prompt_choose_many "Header" option1 option2 ...
-# Prints selected options to stdout (one per line). UI goes to stderr.
+# Prints selected options to stdout (one per line). UI goes to the terminal / stderr.
 prompt_choose_many() {
     local header="$1"
     shift
     local options=("$@")
+
+    if [[ ${#options[@]} -eq 0 ]]; then
+        return 0
+    fi
 
     if [[ -n "${YES_MODE:-}" ]]; then
         # Prefer defaults when present; otherwise all
@@ -343,21 +351,23 @@ prompt_choose_many() {
     fi
 
     if _use_gum; then
-        local args=()
+        local args=(--no-limit --header "$header" --height 20)
         local opt
         for opt in "${options[@]}"; do
             [[ "$opt" == *"[default]"* ]] && args+=(--selected "$opt")
         done
-        local result=""
-        if result="$(printf '%s\n' "${options[@]}" | gum choose --no-limit --header "$header" "${args[@]}" 2>/dev/null)"; then
-            printf '%s\n' "$result"
+        # Pass choices as args (not stdin) so the keyboard stays on the TTY.
+        # Read input from /dev/tty when available — stdout may be captured by the caller.
+        local gum_ok=0
+        if [[ -r /dev/tty ]]; then
+            gum choose "${args[@]}" "${options[@]}" </dev/tty && gum_ok=1
+        else
+            gum choose "${args[@]}" "${options[@]}" && gum_ok=1
+        fi
+        if [[ "$gum_ok" -eq 1 ]]; then
             return 0
         fi
-        # gum cancel / no-TTY: if we have a real terminal, treat as empty selection;
-        # otherwise fall through to the basic number picker.
-        if [[ -t 0 || -t 2 ]]; then
-            return 0
-        fi
+        echo -e "${Yellow:-}Falling back to number selection…${Off:-}" >&2
     fi
 
     echo -e "${BackCyan}${header}${Off}" >&2
