@@ -179,15 +179,15 @@ symlink_dotfile_safe() {
     local target="$HOME/$rel"
     local name="Symlink $rel"
 
-    # For nested paths like .config/zed, ensure parent exists
-    mkdir -p "$(dirname "$target")"
-
     local cmd="ln -sfn \"$source\" \"$target\""
 
     if dry_run_is_active; then
         dry_run_add_step "$name" "$cmd" "$target" "backup existing if present" "false" ""
         return 0
     fi
+
+    # For nested paths like .config/zed, ensure parent exists
+    mkdir -p "$(dirname "$target")"
 
     local backup=""
     if [[ -e "$target" || -L "$target" ]]; then

@@ -28,6 +28,13 @@ brew_is_available() {
 
 # Append brew shellenv to ~/.zprofile once (so new shells find brew).
 _brew_append_shellenv_zprofile() {
+    if dry_run_is_active 2>/dev/null; then
+        dry_run_add_step "Homebrew shellenv in ~/.zprofile" \
+            "append brew shellenv block to ~/.zprofile" \
+            "$HOME/.zprofile" "lives on the machine, outside the repo" "false" ""
+        return 0
+    fi
+
     local brew_prefix marker_start marker_end
     brew_prefix="$(brew --prefix 2>/dev/null)" || return 1
     marker_start="# >>> dotfiles-setup >>>"

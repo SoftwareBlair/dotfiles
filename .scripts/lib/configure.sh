@@ -89,14 +89,13 @@ install_dotfile_path() {
         return 0
     fi
 
-    mkdir -p "$(dirname "$target")"
-
     if [[ "$LINK_MODE" == "copy" ]]; then
         local cmd="cp -a \"$source\" \"$target\""
         if dry_run_is_active; then
             dry_run_add_step "Copy $rel" "$cmd" "$target" "backup existing if present" "false" ""
             return 0
         fi
+        mkdir -p "$(dirname "$target")"
         local backup=""
         if [[ -e "$target" || -L "$target" ]]; then
             backup="$(state_backup_path "$target")"
@@ -145,7 +144,8 @@ offer_secrets_zprofile() {
         fi
     fi
 
-    if dry_run_is_active; then
+    # Dry-run: record only — never create or modify ~/.zprofile
+    if dry_run_is_active 2>/dev/null; then
         if [[ -f "$secrets_file" ]]; then
             dry_run_add_step "Add secrets section to ~/.zprofile" \
                 "append $marker_start … $marker_end block for API keys / tokens" \
