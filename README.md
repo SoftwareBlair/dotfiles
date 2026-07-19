@@ -11,7 +11,9 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-Confirm once and it installs. If something is already present and an update is available, you’ll be offered a chance to upgrade it (auto-accepted with `-y`).
+Confirm once (after choosing packages) and it installs. If something is already present and an update is available, you’ll be offered a chance to upgrade it (auto-accepted with `-y`).
+
+The interactive run lets you **select packages** from your usual stack (defaults are pre-selected). Edit those defaults in [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) (`MY_SETUP`). `-y` installs the full default set without prompting.
 
 The repo can live **anywhere**; moving to `~/dotfiles` is optional.
 
@@ -24,8 +26,8 @@ Restart your terminal when finished.
 ## Common commands
 
 ```bash
-./setup.sh                 # confirm, then install
-./setup.sh -y              # non-interactive install
+./setup.sh                 # choose packages, then install
+./setup.sh -y              # non-interactive install (full defaults)
 ./setup.sh -n              # dry-run (same prompts, no changes)
 ./setup.sh -y -n           # non-interactive dry-run
 ./setup.sh --pkgmgr apt    # brew | apt | dnf | pacman

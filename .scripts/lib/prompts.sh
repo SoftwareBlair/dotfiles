@@ -301,11 +301,11 @@ prompt_choose_one() {
         return 0
     fi
 
-    echo -e "${BackCyan}${header}${Off}"
+    echo -e "${BackCyan}${header}${Off}" >&2
     for i in "${!options[@]}"; do
         local mark=" "
         [[ "$i" -eq "$default_idx" ]] && mark="*"
-        printf "  %s %d) %s\n" "$mark" "$((i + 1))" "${options[$i]}"
+        printf "  %s %d) %s\n" "$mark" "$((i + 1))" "${options[$i]}" >&2
     done
     local pick
     read -r -p "Choice [$((default_idx + 1))]: " pick
@@ -321,6 +321,7 @@ prompt_choose_one() {
 }
 
 # prompt_choose_many "Header" option1 option2 ...
+# Prints selected options to stdout (one per line). UI goes to stderr.
 prompt_choose_many() {
     local header="$1"
     shift
@@ -342,28 +343,28 @@ prompt_choose_many() {
     fi
 
     if _use_gum; then
-        local selected=()
-        local i
-        for i in "${!options[@]}"; do
-            [[ "${options[$i]}" == *"[default]"* ]] && selected+=("$i")
+        local args=()
+        local opt
+        for opt in "${options[@]}"; do
+            [[ "$opt" == *"[default]"* ]] && args+=(--selected "$opt")
         done
-        if [[ ${#selected[@]} -gt 0 ]]; then
-            local args=()
-            for i in "${selected[@]}"; do
-                args+=(--selected "$i")
-            done
-            printf '%s\n' "${options[@]}" | gum choose --no-limit --header "$header" "${args[@]}"
-        else
-            printf '%s\n' "${options[@]}" | gum choose --no-limit --header "$header"
+        local result=""
+        if result="$(printf '%s\n' "${options[@]}" | gum choose --no-limit --header "$header" "${args[@]}" 2>/dev/null)"; then
+            printf '%s\n' "$result"
+            return 0
         fi
-        return 0
+        # gum cancel / no-TTY: if we have a real terminal, treat as empty selection;
+        # otherwise fall through to the basic number picker.
+        if [[ -t 0 || -t 2 ]]; then
+            return 0
+        fi
     fi
 
-    echo -e "${BackCyan}${header}${Off}"
-    echo -e "${Yellow}Enter numbers separated by spaces (e.g. 1 3 4). Empty = defaults/all.${Off}"
+    echo -e "${BackCyan}${header}${Off}" >&2
+    echo -e "${Yellow}Enter numbers separated by spaces (e.g. 1 3 4). Empty = defaults/all.${Off}" >&2
     local i
     for i in "${!options[@]}"; do
-        printf "  %d) %s\n" "$((i + 1))" "${options[$i]}"
+        printf "  %d) %s\n" "$((i + 1))" "${options[$i]}" >&2
     done
     local picks
     read -r -p "Choices: " picks

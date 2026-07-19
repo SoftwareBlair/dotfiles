@@ -42,7 +42,7 @@ usage() {
     echo ""
     echo -e "${b}New machine setup${o}  ${d}macOS + Linux${o}"
     echo -e "${d}────────────────────────────────────────${o}"
-    echo -e "  Installs preferred stack, then links this repo’s configs."
+    echo -e "  Installs a selected stack (defaults from your usual setup), then links this repo’s configs."
     echo ""
     echo -e "  ${w}Includes${o}"
     echo -e "    ${d}editors${o}   ${HELP_INCLUDES_EDITORS:-Cursor, Zed}"
@@ -50,8 +50,8 @@ usage() {
     echo -e "    ${d}shell${o}     ${HELP_INCLUDES_SHELL:-zsh + plugins · NVM}"
     echo ""
     echo -e "  ${w}Usage${o}"
-    echo -e "    ${g}./setup.sh${o}                   Confirm, then install"
-    echo -e "    ${g}./setup.sh -y${o}                Non-interactive"
+    echo -e "    ${g}./setup.sh${o}                   Choose packages, then install"
+    echo -e "    ${g}./setup.sh -y${o}                Non-interactive (full default stack)"
     echo -e "    ${g}./setup.sh -n${o}                Dry-run (same prompts, no changes)"
     echo -e "    ${g}./setup.sh -y -n${o}             Non-interactive dry-run"
     echo -e "    ${g}./setup.sh --undo${o}            Reverse logged actions"
@@ -68,7 +68,7 @@ usage() {
     echo -e "    ${d}updates${o}   Offer upgrade when already installed"
     echo ""
     echo -e "  ${w}More${o}"
-    echo -e "    ${d}stack${o}     edit MY_SETUP in .scripts/lib/presets.sh"
+    echo -e "    ${d}stack${o}     edit MY_SETUP in .scripts/lib/presets.sh (picker defaults)"
     echo -e "    ${d}state${o}     ~/.dotfiles-setup/"
     echo -e "    ${d}docs${o}      README.md"
     echo ""
@@ -201,7 +201,9 @@ run_setup() {
 
     ensure_pkgmgr "$PKG_MGR"
 
-    apply_my_setup
+    if ! pick_my_setup; then
+        exit 1
+    fi
     set_default_symlinks
 
     echo ""
@@ -211,8 +213,8 @@ run_setup() {
     dry_run_is_active && echo "  Mode: DRY RUN"
 
     if [[ -z "${YES_MODE:-}" ]]; then
-        local confirm_msg="Install this setup now?"
-        dry_run_is_active && confirm_msg="Continue dry-run of this setup?"
+        local confirm_msg="Install the selected packages now?"
+        dry_run_is_active && confirm_msg="Continue dry-run with the selected packages?"
         if ! prompt_confirm "$confirm_msg" "true"; then
             if dry_run_is_active; then
                 prompt_warn "Cancelled."
