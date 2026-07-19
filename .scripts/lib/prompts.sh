@@ -1,14 +1,22 @@
 #!/bin/bash
 # gum wrappers with colored read fallback
 
+# Resolve .scripts/bin (create it when missing — cd into bin fails if the dir does not exist).
+_scripts_bin_dir() {
+    local scripts_dir
+    scripts_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || return 1
+    mkdir -p "${scripts_dir}/bin" || return 1
+    echo "${scripts_dir}/bin"
+}
+
 _gum_already_available() {
     if command -v gum &>/dev/null; then
         return 0
     fi
     local scripts_bin
-    scripts_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")/../bin" && pwd)"
-    if [[ -x "$scripts_bin/gum" ]]; then
-        export PATH="$scripts_bin:$PATH"
+    scripts_bin="$(_scripts_bin_dir)" || return 1
+    if [[ -x "${scripts_bin}/gum" ]]; then
+        export PATH="${scripts_bin}:$PATH"
         return 0
     fi
     return 1
@@ -17,7 +25,10 @@ _gum_already_available() {
 # Download Charm gum into .scripts/bin (fallback when brew install gum fails).
 _install_gum_from_github() {
     local scripts_bin os arch version asset url tmpdir gum_bin
-    scripts_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")/../bin" && pwd)"
+    scripts_bin="$(_scripts_bin_dir)" || {
+        echo -e "${Yellow:-}Could not create .scripts/bin for gum${Off:-}" >&2
+        return 1
+    }
 
     case "$(uname -s)" in
         Darwin) os="Darwin" ;;
@@ -64,12 +75,20 @@ _install_gum_from_github() {
         rm -rf "$tmpdir"
         return 1
     fi
-    mkdir -p "$scripts_bin"
-    cp "$gum_bin" "$scripts_bin/gum"
-    chmod +x "$scripts_bin/gum"
-    export PATH="$scripts_bin:$PATH"
+    if ! cp "$gum_bin" "${scripts_bin}/gum"; then
+        echo -e "${Yellow:-}Failed to install gum to ${scripts_bin}/gum${Off:-}" >&2
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    chmod +x "${scripts_bin}/gum"
+    export PATH="${scripts_bin}:$PATH"
     rm -rf "$tmpdir"
-    command -v gum &>/dev/null
+
+    if [[ -x "${scripts_bin}/gum" ]] && command -v gum &>/dev/null; then
+        return 0
+    fi
+    echo -e "${Yellow:-}gum was copied to ${scripts_bin}/gum but is not usable${Off:-}" >&2
+    return 1
 }
 
 _install_gum_via_brew() {
