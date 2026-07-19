@@ -19,6 +19,9 @@ _json_escape() {
 
 # state_log_install id name action commands dest side_effects symlink_source symlink_target backup_path
 state_log_install() {
+    if dry_run_is_active 2>/dev/null; then
+        return 0
+    fi
     local id="$1"
     local name="$2"
     local action="$3"

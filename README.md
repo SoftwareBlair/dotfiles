@@ -26,7 +26,7 @@ Restart your terminal when finished.
 ```bash
 ./setup.sh                 # confirm, then install
 ./setup.sh -y              # non-interactive install
-./setup.sh -n              # dry-run (preview only)
+./setup.sh -n              # dry-run (same prompts, no changes)
 ./setup.sh -y -n           # non-interactive dry-run
 ./setup.sh --pkgmgr apt    # brew | apt | dnf | pacman
 ./setup.sh --undo          # reverse logged installs + symlinks
@@ -126,7 +126,7 @@ Reverses actions recorded in the install log, including package installs, **syml
 |------|-------------|
 | `-h`, `--help` | Show help |
 | `-y`, `--yes` | Non-interactive (auto-confirm) |
-| `-n`, `--dry-run` | Preview plan; change nothing |
+| `-n`, `--dry-run` | Same interactive prompts; print plan; change nothing |
 | `--pkgmgr <name>` | `brew` \| `apt` \| `dnf` \| `pacman` |
 | `--undo` | Reverse logged actions |
 | `--select` | With `--undo`, choose which actions to reverse |

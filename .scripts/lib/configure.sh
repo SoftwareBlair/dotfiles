@@ -129,19 +129,6 @@ offer_secrets_zprofile() {
         return 0
     fi
 
-    if dry_run_is_active; then
-        if [[ -f "$secrets_file" ]]; then
-            dry_run_add_step "Add secrets section to ~/.zprofile" \
-                "append $marker_start … $marker_end block for API keys / tokens" \
-                "$secrets_file" "lives on the machine, outside the repo" "false" ""
-        else
-            dry_run_add_step "Create ~/.zprofile for secrets" \
-                "write $secrets_file with secrets template for API keys / tokens" \
-                "$secrets_file" "lives on the machine, outside the repo" "false" ""
-        fi
-        return 0
-    fi
-
     prompt_style "── Local secrets ──"
     prompt_info "Keep API keys and tokens in ~/.zprofile on this machine (outside the repo)."
     if [[ -f "$secrets_file" ]]; then
@@ -156,6 +143,19 @@ offer_secrets_zprofile() {
             report_skip "secrets ~/.zprofile" 2>/dev/null || true
             return 0
         fi
+    fi
+
+    if dry_run_is_active; then
+        if [[ -f "$secrets_file" ]]; then
+            dry_run_add_step "Add secrets section to ~/.zprofile" \
+                "append $marker_start … $marker_end block for API keys / tokens" \
+                "$secrets_file" "lives on the machine, outside the repo" "false" ""
+        else
+            dry_run_add_step "Create ~/.zprofile for secrets" \
+                "write $secrets_file with secrets template for API keys / tokens" \
+                "$secrets_file" "lives on the machine, outside the repo" "false" ""
+        fi
+        return 0
     fi
 
     {

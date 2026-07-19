@@ -1,21 +1,99 @@
 #!/bin/bash
 # gum wrappers with colored read fallback
 
-ensure_gum() {
-    # Use gum only if already available — never auto-install (keeps setup fast/predictable)
+_gum_already_available() {
     if command -v gum &>/dev/null; then
         return 0
     fi
-
     local scripts_bin
     scripts_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")/../bin" && pwd)"
     if [[ -x "$scripts_bin/gum" ]]; then
         export PATH="$scripts_bin:$PATH"
         return 0
     fi
-
-    GUM_FALLBACK=1
     return 1
+}
+
+_install_gum() {
+    local scripts_bin
+    scripts_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")/../bin" && pwd)"
+
+    if command -v brew &>/dev/null || ensure_brew_shellenv 2>/dev/null; then
+        echo -e "${Cyan:-}Installing gum via Homebrew…${Off:-}"
+        if brew install gum &>/dev/null && command -v gum &>/dev/null; then
+            return 0
+        fi
+    fi
+
+    local os arch asset tmpdir gum_bin
+    case "$(uname -s)" in
+        Darwin) os="Darwin" ;;
+        Linux) os="Linux" ;;
+        *) return 1 ;;
+    esac
+    case "$(uname -m)" in
+        x86_64|amd64) arch="x86_64" ;;
+        aarch64|arm64) arch="arm64" ;;
+        *) return 1 ;;
+    esac
+
+    asset="gum_${os}_${arch}.tar.gz"
+    tmpdir="$(mktemp -d)"
+    echo -e "${Cyan:-}Downloading gum…${Off:-}"
+    if curl -fsSL --connect-timeout 5 --max-time 45 \
+        "https://github.com/charmbracelet/gum/releases/latest/download/${asset}" \
+        -o "$tmpdir/gum.tgz" 2>/dev/null; then
+        tar -xzf "$tmpdir/gum.tgz" -C "$tmpdir" 2>/dev/null
+        gum_bin="$(find "$tmpdir" -type f -name gum | head -1)"
+        if [[ -n "$gum_bin" ]]; then
+            mkdir -p "$scripts_bin"
+            cp "$gum_bin" "$scripts_bin/gum"
+            chmod +x "$scripts_bin/gum"
+            export PATH="$scripts_bin:$PATH"
+            rm -rf "$tmpdir"
+            command -v gum &>/dev/null && return 0
+        fi
+    fi
+    rm -rf "$tmpdir"
+    return 1
+}
+
+# Prompt (basic fallback) to install gum when missing — nicer interactive UX.
+# Uses plain read so this works before gum is available. -y skips the offer.
+# Opting in installs gum even during dry-run so the rest of the session can use it.
+# Always returns 0 so setup can continue with basic prompts when gum is unavailable.
+ensure_gum() {
+    if _gum_already_available; then
+        unset GUM_FALLBACK 2>/dev/null || true
+        return 0
+    fi
+
+    # Non-interactive: keep basic prompts
+    if [[ -n "${YES_MODE:-}" ]]; then
+        GUM_FALLBACK=1
+        return 0
+    fi
+
+    echo ""
+    echo -e "${Purple:-}gum${Off:-} is not installed. It provides a nicer interactive UI for setup."
+    echo -e "${Purple:-}Install gum for a better experience? (Y/n): ${Off:-}"
+    local answer
+    read -r answer
+    if [[ -n "$answer" && "$answer" != [Yy]* ]]; then
+        echo -e "${Yellow:-}Using basic prompts.${Off:-}"
+        GUM_FALLBACK=1
+        return 0
+    fi
+
+    if _install_gum && command -v gum &>/dev/null; then
+        unset GUM_FALLBACK 2>/dev/null || true
+        echo -e "${Green:-}✓ gum ready${Off:-}"
+        return 0
+    fi
+
+    echo -e "${Yellow:-}Could not install gum — using basic prompts.${Off:-}"
+    GUM_FALLBACK=1
+    return 0
 }
 
 _use_gum() {
@@ -138,33 +216,30 @@ prompt_choose_one() {
         return 0
     fi
 
-    echo -e "${Purple}${header}${Off}"
-    local n=1
-    for opt in "${options[@]}"; do
-        echo "  $n) $opt"
-        n=$((n + 1))
+    echo -e "${BackCyan}${header}${Off}"
+    for i in "${!options[@]}"; do
+        local mark=" "
+        [[ "$i" -eq "$default_idx" ]] && mark="*"
+        printf "  %s %d) %s\n" "$mark" "$((i + 1))" "${options[$i]}"
     done
-    local choice
-    read -r -p "Enter number [$((default_idx + 1))]: " choice
-    choice="${choice:-$((default_idx + 1))}"
-    if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 && "$choice" -le "${#options[@]}" ]]; then
-        echo "${options[$((choice - 1))]}"
+    local pick
+    read -r -p "Choice [$((default_idx + 1))]: " pick
+    if [[ -z "$pick" ]]; then
+        echo "${options[$default_idx]}"
+        return 0
+    fi
+    if [[ "$pick" =~ ^[0-9]+$ ]] && [[ "$pick" -ge 1 && "$pick" -le ${#options[@]} ]]; then
+        echo "${options[$((pick - 1))]}"
     else
         echo "${options[$default_idx]}"
     fi
 }
 
 # prompt_choose_many "Header" option1 option2 ...
-# Prints selected options one per line.
-# Options marked with "[default]" are pre-selected in gum / suggested in fallback.
 prompt_choose_many() {
     local header="$1"
     shift
     local options=("$@")
-
-    if [[ ${#options[@]} -eq 0 ]]; then
-        return 0
-    fi
 
     if [[ -n "${YES_MODE:-}" ]]; then
         # Prefer defaults when present; otherwise all
@@ -182,63 +257,46 @@ prompt_choose_many() {
     fi
 
     if _use_gum; then
-        local gum_args=(choose --no-limit --header "$header")
-        for opt in "${options[@]}"; do
-            if [[ "$opt" == *"[default]"* ]]; then
-                gum_args+=(--selected "$opt")
-            fi
+        local selected=()
+        local i
+        for i in "${!options[@]}"; do
+            [[ "${options[$i]}" == *"[default]"* ]] && selected+=("$i")
         done
-        printf '%s\n' "${options[@]}" | gum "${gum_args[@]}"
+        if [[ ${#selected[@]} -gt 0 ]]; then
+            local args=()
+            for i in "${selected[@]}"; do
+                args+=(--selected "$i")
+            done
+            printf '%s\n' "${options[@]}" | gum choose --no-limit --header "$header" "${args[@]}"
+        else
+            printf '%s\n' "${options[@]}" | gum choose --no-limit --header "$header"
+        fi
         return 0
     fi
 
-    echo -e "${Purple}${header}${Off}"
-    echo "(Enter comma-separated numbers, 'defaults', 'all', or 'none')"
-    local i=1
-    local default_nums=()
-    for opt in "${options[@]}"; do
-        if [[ "$opt" == *"[default]"* ]]; then
-            echo "  $i) $opt"
-            default_nums+=("$i")
-        else
-            echo "  $i) $opt"
-        fi
-        i=$((i + 1))
+    echo -e "${BackCyan}${header}${Off}"
+    echo -e "${Yellow}Enter numbers separated by spaces (e.g. 1 3 4). Empty = defaults/all.${Off}"
+    local i
+    for i in "${!options[@]}"; do
+        printf "  %d) %s\n" "$((i + 1))" "${options[$i]}"
     done
-    local default_hint="all"
-    if [[ ${#default_nums[@]} -gt 0 ]]; then
-        local IFS=','
-        default_hint="defaults (${default_nums[*]})"
-        unset IFS
-    fi
-    local choice
-    read -r -p "Selection [$default_hint]: " choice
-    if [[ -z "$choice" ]]; then
-        if [[ ${#default_nums[@]} -gt 0 ]]; then
-            choice="defaults"
-        else
-            choice="all"
-        fi
-    fi
-    if [[ "$choice" == "all" ]]; then
-        printf '%s\n' "${options[@]}"
-        return 0
-    fi
-    if [[ "$choice" == "none" ]]; then
-        return 0
-    fi
-    if [[ "$choice" == "defaults" ]]; then
+    local picks
+    read -r -p "Choices: " picks
+    if [[ -z "$picks" ]]; then
+        local defaults=()
         for opt in "${options[@]}"; do
-            [[ "$opt" == *"[default]"* ]] && echo "$opt"
+            [[ "$opt" == *"[default]"* ]] && defaults+=("$opt")
         done
+        if [[ ${#defaults[@]} -gt 0 ]]; then
+            printf '%s\n' "${defaults[@]}"
+        else
+            printf '%s\n' "${options[@]}"
+        fi
         return 0
     fi
-    local IFS=','
-    local nums
-    read -r -a nums <<< "$choice"
-    for n in "${nums[@]}"; do
-        n="$(echo "$n" | tr -d ' ')"
-        if [[ "$n" =~ ^[0-9]+$ ]] && [[ "$n" -ge 1 && "$n" -le "${#options[@]}" ]]; then
+    local n
+    for n in $picks; do
+        if [[ "$n" =~ ^[0-9]+$ ]] && [[ "$n" -ge 1 && "$n" -le ${#options[@]} ]]; then
             echo "${options[$((n - 1))]}"
         fi
     done
@@ -250,7 +308,7 @@ prompt_spin() {
     if _use_gum && ! dry_run_is_active 2>/dev/null; then
         gum spin --spinner dot --title "$title" -- "$@"
     else
-        echo -e "${Blue}${title}${Off}"
+        echo -e "${Cyan}${title}${Off}"
         "$@"
     fi
 }

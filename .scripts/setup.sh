@@ -52,7 +52,7 @@ usage() {
     echo -e "  ${w}Usage${o}"
     echo -e "    ${g}./setup.sh${o}                   Confirm, then install"
     echo -e "    ${g}./setup.sh -y${o}                Non-interactive"
-    echo -e "    ${g}./setup.sh -n${o}                Dry-run (preview only)"
+    echo -e "    ${g}./setup.sh -n${o}                Dry-run (same prompts, no changes)"
     echo -e "    ${g}./setup.sh -y -n${o}             Non-interactive dry-run"
     echo -e "    ${g}./setup.sh --undo${o}            Reverse logged actions"
     echo -e "    ${g}./setup.sh --undo -n${o}         Preview undo"
@@ -164,22 +164,23 @@ set_default_symlinks() {
 run_setup() {
     state_init
     load_setup_prefs
-    ensure_gum || prompt_warn "Using basic prompts (gum not available)."
+    ensure_gum
 
     prompt_welcome "New machine setup" "$(platform_label)"
     prompt_info "Dotfiles: $DOTFILES_DIR"
     prompt_info "Stack: ${HELP_INCLUDES_TERMINAL:-SFMono, Starship, eza, …} · Cursor · Zed"
+    dry_run_is_active && prompt_info "Dry-run: same prompts as a real run; nothing will be installed or linked."
 
     if [[ "$DOTFILES_DIR" != "$HOME/dotfiles" && -z "${YES_MODE:-}" ]]; then
         if prompt_confirm "Move repo to ~/dotfiles? (optional — works from any path)" "false"; then
             move_dotfiles
-            DOTFILES_DIR="$HOME/dotfiles"
+            # move_dotfiles updates DOTFILES_DIR on a real move; dry-run only records the step
         fi
     fi
 
     local count
     count="$(state_log_count)"
-    if [[ "$count" -gt 0 && -z "${YES_MODE:-}" && -z "$DRY_RUN" ]]; then
+    if [[ "$count" -gt 0 && -z "${YES_MODE:-}" ]]; then
         local resume
         resume="$(prompt_choose_one "Previous setup found ($count actions). What next?" \
             "Re-run new machine setup  [default]" \
@@ -210,9 +211,13 @@ run_setup() {
     dry_run_is_active && echo "  Mode: DRY RUN"
 
     if [[ -z "${YES_MODE:-}" ]]; then
-        if dry_run_is_active; then
-            :
-        elif ! prompt_confirm "Install this setup now?" "true"; then
+        local confirm_msg="Install this setup now?"
+        dry_run_is_active && confirm_msg="Continue dry-run of this setup?"
+        if ! prompt_confirm "$confirm_msg" "true"; then
+            if dry_run_is_active; then
+                prompt_warn "Cancelled."
+                exit 0
+            fi
             local next
             next="$(prompt_choose_one "What next?" \
                 "Preview plan (dry-run)  [default]" \
@@ -229,28 +234,12 @@ run_setup() {
         fi
     fi
 
-    if dry_run_is_active; then
-        install_prerequisites
-        installer_plan_selections
-        local p
-        for p in "${SYMLINK_TARGETS[@]}"; do
-            install_dotfile_path "$p"
-        done
-        write_shell_features
-        configure_starship
-        offer_secrets_zprofile
-        [[ -n "${SELECTED_SHELL:-}" ]] && maybe_chsh "$SELECTED_SHELL"
-        dry_run_print_plan "New machine setup plan"
-        prompt_info "Dry run complete — no changes made."
-        save_setup_prefs
-        exit 0
-    fi
-
     INSTALL_REPORT_OK=()
     INSTALL_REPORT_SKIP=()
     INSTALL_REPORT_FAIL=()
     INSTALL_REPORT_CONFIG=()
 
+    # Same user flow for install and dry-run; dry-run helpers record steps instead of changing the system
     install_prerequisites
     installer_run_selections
     local p
@@ -264,6 +253,12 @@ run_setup() {
         maybe_chsh "$SELECTED_SHELL"
     fi
 
+    if dry_run_is_active; then
+        dry_run_print_plan "New machine setup plan"
+        prompt_info "Dry run complete — no changes made."
+        exit 0
+    fi
+
     save_setup_prefs
     print_final_report
     prompt_welcome "Done" "Restart your terminal"
@@ -275,7 +270,7 @@ init_platform
 load_catalogs
 
 if [[ -n "$UNDO_MODE" ]]; then
-    ensure_gum || true
+    ensure_gum
     if [[ -n "$PKG_MGR_FLAG" ]]; then
         PKG_MGR="$PKG_MGR_FLAG"
     else
@@ -288,7 +283,7 @@ if [[ -n "$UNDO_MODE" ]]; then
 fi
 
 if [[ -n "$RUN_COMMAND" ]]; then
-    ensure_gum || true
+    ensure_gum
     case "$RUN_COMMAND" in
         revert_setup) run_undo "false" ;;
         symlink_dotfile|unlink_dotfile) "$RUN_COMMAND" "${RUN_COMMAND_ARGS[@]:-}" ;;

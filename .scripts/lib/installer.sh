@@ -20,52 +20,6 @@ installer_is_installed() {
     eval "$check" &>/dev/null
 }
 
-# Build dry-run plan steps for selected IDs (caller should dry_run_begin_plan first)
-installer_plan_selections() {
-    local id
-    local any_installed=false
-    for id in "${SELECTED_IDS[@]}"; do
-        if installer_is_installed "$id"; then
-            any_installed=true
-            break
-        fi
-    done
-    if [[ "$any_installed" == "true" ]]; then
-        pkgmgr_refresh_metadata
-    fi
-
-    for id in "${SELECTED_IDS[@]}"; do
-        local name cmd dest side_effects requires_sudo upgrade_cmd
-        name="$(catalog_get "$id" name)"
-        if installer_is_installed "$id"; then
-            if catalog_has_update "$id"; then
-                upgrade_cmd="$(catalog_resolve_upgrade_cmd "$id")"
-                dry_run_add_step "Update $name" "$upgrade_cmd" "$(catalog_install_dest "$id")" \
-                    "already present — update available" \
-                    "$(catalog_get "$id" install_requires_sudo)" ""
-            elif catalog_pkg_spec "$id" &>/dev/null; then
-                dry_run_add_step "$name" "" "$(catalog_install_dest "$id")" "" "false" \
-                    "already present — up to date (would skip)"
-            else
-                dry_run_add_step "$name" "" "$(catalog_install_dest "$id")" "" "false" \
-                    "already present — would skip (no update check for this install method)"
-            fi
-            continue
-        fi
-        cmd="$(catalog_resolve_install_cmd "$id")"
-        dest="$(catalog_install_dest "$id")"
-        side_effects="$(catalog_get "$id" install_side_effects)"
-        requires_sudo="$(catalog_get "$id" install_requires_sudo)"
-        [[ -z "$requires_sudo" ]] && requires_sudo="false"
-        if [[ -z "$cmd" ]]; then
-            dry_run_add_step "$name" "(no recipe for $PKG_MGR on $PLATFORM)" "" "" "false" \
-                "unsupported combination — would skip"
-            continue
-        fi
-        dry_run_add_step "$name" "$cmd" "$dest" "$side_effects" "$requires_sudo" ""
-    done
-}
-
 # Upgrade already-installed items that have updates available
 installer_offer_updates() {
     local outdated_ids=()
@@ -125,6 +79,14 @@ installer_offer_updates() {
         fi
 
         prompt_style "Updating $name..."
+        if dry_run_is_active; then
+            dry_run_exec "Update $name" "$upgrade_cmd" "$(catalog_install_dest "$id")" \
+                "$(catalog_get "$id" install_side_effects)" \
+                "$(catalog_get "$id" install_requires_sudo)"
+            report_ok "$name (would update)" 2>/dev/null || true
+            continue
+        fi
+
         if prompt_spin "Updating $name..." bash -c "$upgrade_cmd"; then
             state_log_install "$id" "$name" "upgrade" "$upgrade_cmd" \
                 "$(catalog_install_dest "$id")" \
@@ -256,21 +218,23 @@ maybe_chsh() {
         return 0
     fi
 
+    if ! prompt_confirm "Set $shell_id as your default shell?"; then
+        return 0
+    fi
+
     if dry_run_is_active; then
         dry_run_add_step "Set default shell to $shell_id" \
             "chsh -s $shell_path" "$shell_path" "previous shell: $SHELL" "true" ""
         return 0
     fi
 
-    if prompt_confirm "Set $shell_id as your default shell?"; then
-        local prev="$SHELL"
-        if chsh -s "$shell_path"; then
-            state_log_install "chsh-$shell_id" "Default shell → $shell_id" "chsh" \
-                "chsh -s $shell_path" "$shell_path" "previous=$prev" "" "" ""
-            prompt_success "Default shell set to $shell_id (restart terminal)."
-        else
-            prompt_warn "Could not change shell automatically. Run: chsh -s $shell_path"
-        fi
+    local prev="$SHELL"
+    if chsh -s "$shell_path"; then
+        state_log_install "chsh-$shell_id" "Default shell → $shell_id" "chsh" \
+            "chsh -s $shell_path" "$shell_path" "previous=$prev" "" "" ""
+        prompt_success "Default shell set to $shell_id (restart terminal)."
+    else
+        prompt_warn "Could not change shell automatically. Run: chsh -s $shell_path"
     fi
 }
 
@@ -307,10 +271,10 @@ install_prerequisites() {
             pacman) cmd="sudo pacman -S --noconfirm base-devel curl git unzip" ;;
         esac
         if [[ -n "$cmd" ]]; then
-            if dry_run_is_active; then
-                dry_run_add_step "Build tools" "$cmd" "" "" "true" ""
-            else
-                if prompt_confirm "Install build essentials / curl / git?" "true"; then
+            if prompt_confirm "Install build essentials / curl / git?" "true"; then
+                if dry_run_is_active; then
+                    dry_run_add_step "Build tools" "$cmd" "" "" "true" ""
+                else
                     prompt_spin "Installing build tools..." bash -c "$cmd"
                     state_log_install "build-tools" "Build tools" "install" "$cmd" "" "" "" "" ""
                 fi
