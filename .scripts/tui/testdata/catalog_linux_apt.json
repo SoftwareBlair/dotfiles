@@ -1,0 +1,56 @@
+{
+  "dotfiles_dir": "/home/user/dotfiles",
+  "dry_run": true,
+  "packages": [
+    {
+      "category": "fonts",
+      "default": true,
+      "description": "Patched SF Mono",
+      "id": "sfmono_nerd",
+      "name": "SFMono Nerd Font"
+    },
+    {
+      "category": "dev-tools",
+      "default": true,
+      "description": "Prompt",
+      "id": "starship",
+      "name": "Starship"
+    },
+    {
+      "category": "dev-tools",
+      "default": true,
+      "description": "ls replacement",
+      "id": "eza",
+      "name": "eza"
+    },
+    {
+      "category": "dev-tools",
+      "default": true,
+      "description": "Editor",
+      "id": "cursor",
+      "name": "Cursor"
+    },
+    {
+      "category": "dev-tools",
+      "default": true,
+      "description": "Optional editor",
+      "id": "vscode",
+      "name": "VS Code"
+    }
+  ],
+  "pkgmgr": "apt",
+  "pkgmgr_options": [
+    {
+      "default": true,
+      "id": "brew",
+      "label": "Homebrew (brew)"
+    },
+    {
+      "default": false,
+      "id": "apt",
+      "label": "apt — Debian/Ubuntu"
+    }
+  ],
+  "platform": "linux",
+  "platform_label": "Linux · ubuntu · amd64"
+}

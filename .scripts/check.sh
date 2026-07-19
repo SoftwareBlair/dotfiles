@@ -24,3 +24,7 @@ echo "Running shellcheck on ${#files[@]} files…"
 # Bash 3.2-friendly; allow sourced libs without following every path
 shellcheck -x -s bash "${files[@]}"
 echo "OK"
+
+if [[ -x "$SCRIPTS_DIR/tui/test.sh" ]] || [[ -f "$SCRIPTS_DIR/tui/test.sh" ]]; then
+    bash "$SCRIPTS_DIR/tui/test.sh"
+fi

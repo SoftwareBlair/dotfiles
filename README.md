@@ -13,7 +13,7 @@ chmod +x setup.sh
 
 Confirm once (after choosing packages) and it installs. If something is already present and an update is available, you’ll be offered a chance to upgrade it (auto-accepted with `-y`).
 
-The interactive run lets you **select packages** from your usual stack (defaults are pre-selected). Edit those defaults in [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) (`MY_SETUP`). `-y` installs the full default set without prompting.
+Interactive runs prefer the **Go Bubble Tea TUI** when `.scripts/tui/dotfiles-setup` is built (`./setup.sh --tui` builds it if needed). Use `./setup.sh --bash` for classic prompts. Package defaults come from [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) (`MY_SETUP`). `-y` installs the full default set without prompting.
 
 The repo can live **anywhere**; moving to `~/dotfiles` is optional.
 
@@ -26,7 +26,9 @@ Restart your terminal when finished.
 ## Common commands
 
 ```bash
-./setup.sh                 # choose packages, then install
+./setup.sh                 # TUI wizard (bash fallback if TUI not built)
+./setup.sh --tui           # force Go Bubble Tea TUI
+./setup.sh --bash          # classic prompts
 ./setup.sh -y              # non-interactive install (full defaults)
 ./setup.sh -n              # dry-run (same prompts, no changes)
 ./setup.sh -y -n           # non-interactive dry-run
@@ -35,6 +37,17 @@ Restart your terminal when finished.
 ./setup.sh --undo -n       # preview undo
 ./setup.sh -h              # help
 ```
+
+### TUI (Bubble Tea)
+
+```bash
+cd .scripts/tui
+go build -o dotfiles-setup .
+go test ./...
+./test.sh                  # unit tests + catalog export smoke test
+```
+
+See [`.scripts/tui/README.md`](.scripts/tui/README.md).
 
 ## What’s installed
 

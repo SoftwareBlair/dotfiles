@@ -48,9 +48,34 @@ apply_my_setup() {
     done
 }
 
+# Apply an explicit ID list (space-separated), e.g. from the Go TUI via SETUP_SELECTION_IDS.
+apply_selection_ids() {
+    local ids="$1"
+    installer_clear_selections
+    SELECTED_SHELL=""
+    PRESET_NAME="mine"
+    local id
+    for id in $ids; do
+        [[ -z "$id" ]] && continue
+        catalog_available "$id" || continue
+        installer_add_selection "$id"
+        if [[ "$(catalog_get "$id" category)" == "shells" ]]; then
+            SELECTED_SHELL="$id"
+        fi
+    done
+    PRESET_IDS="${SELECTED_IDS[*]}"
+    [[ ${#SELECTED_IDS[@]} -gt 0 ]]
+}
+
 # Interactive multi-select from the usual stack (defaults pre-selected).
 # -y keeps the full default set without prompting.
+# SETUP_SELECTION_IDS (space-separated) applies a precomputed selection (TUI / tests).
 pick_my_setup() {
+    if [[ -n "${SETUP_SELECTION_IDS:-}" ]]; then
+        apply_selection_ids "$SETUP_SELECTION_IDS"
+        return $?
+    fi
+
     if [[ -n "${YES_MODE:-}" ]]; then
         apply_my_setup
         return 0

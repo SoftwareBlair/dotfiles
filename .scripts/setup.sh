@@ -27,6 +27,8 @@ source "$SCRIPTS_DIR/lib/undo.sh"
 source "$SCRIPTS_DIR/lib/presets.sh"
 # shellcheck disable=SC1091
 source "$SCRIPTS_DIR/lib/configure.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/wizard-export.sh"
 
 DRY_RUN=""
 YES_MODE=""
@@ -34,6 +36,8 @@ UNDO_MODE=""
 UNDO_SELECT=""
 PKG_MGR_FLAG=""
 RUN_COMMAND=""
+FORCE_TUI=""
+FORCE_BASH=""
 
 usage() {
     local b="${BCyan:-}" d="${BrBlack:-}" o="${Off:-}"
@@ -50,7 +54,9 @@ usage() {
     echo -e "    ${d}shell${o}     ${HELP_INCLUDES_SHELL:-zsh + plugins · NVM}"
     echo ""
     echo -e "  ${w}Usage${o}"
-    echo -e "    ${g}./setup.sh${o}                   Choose packages, then install"
+    echo -e "    ${g}./setup.sh${o}                   TUI wizard (falls back to bash prompts)"
+    echo -e "    ${g}./setup.sh --tui${o}             Force Go Bubble Tea TUI"
+    echo -e "    ${g}./setup.sh --bash${o}            Force classic bash prompts"
     echo -e "    ${g}./setup.sh -y${o}                Non-interactive (full default stack)"
     echo -e "    ${g}./setup.sh -n${o}                Dry-run (same prompts, no changes)"
     echo -e "    ${g}./setup.sh -y -n${o}             Non-interactive dry-run"
@@ -58,7 +64,7 @@ usage() {
     echo -e "    ${g}./setup.sh --undo -n${o}         Preview undo"
     echo -e "    ${g}./setup.sh --undo --select${o}   Choose what to reverse"
     echo -e "    ${g}./setup.sh --pkgmgr${o} ${d}<name>${o}   brew · apt · dnf · pacman"
-    echo -e "    ${g}./setup.sh -c${o} ${d}<helper>${o}       move_dotfiles · revert_setup · …"
+    echo -e "    ${g}./setup.sh -c${o} ${d}<helper>${o}       export_wizard_catalog · move_dotfiles · …"
     echo ""
     echo -e "  ${w}Defaults${o}"
     echo -e "    ${d}pkgmgr${o}    Homebrew (system manager on Linux if brew missing)"
@@ -80,6 +86,8 @@ parse_args() {
             -h|--help) usage; exit 0 ;;
             -y|--yes) YES_MODE=1; shift ;;
             -n|--dry-run) DRY_RUN=1; shift ;;
+            --tui) FORCE_TUI=1; shift ;;
+            --bash) FORCE_BASH=1; shift ;;
             --undo) UNDO_MODE=1; shift ;;
             --select) UNDO_SELECT=true; shift ;;
             --pkgmgr)
@@ -266,6 +274,33 @@ run_setup() {
     prompt_welcome "Done" "Restart your terminal"
 }
 
+maybe_run_tui() {
+    # Non-interactive / undo / -c / explicit --bash → stay in bash
+    [[ -n "${FORCE_BASH:-}" || -n "${YES_MODE:-}" || -n "${UNDO_MODE:-}" || -n "${RUN_COMMAND:-}" ]] && return 1
+    [[ -n "${DOTFILES_NO_TUI:-}" ]] && return 1
+
+    local tui_dir="$SCRIPTS_DIR/tui"
+    local tui_bin="$tui_dir/dotfiles-setup"
+    if [[ ! -x "$tui_bin" ]]; then
+        if [[ -n "${FORCE_TUI:-}" ]] && command -v go >/dev/null 2>&1 && [[ -f "$tui_dir/go.mod" ]]; then
+            (cd "$tui_dir" && go build -o dotfiles-setup .) || return 1
+        else
+            [[ -n "${FORCE_TUI:-}" ]] && echo "TUI binary missing. Build with: (cd .scripts/tui && go build -o dotfiles-setup .)" >&2
+            return 1
+        fi
+    fi
+
+    # Prefer TUI when binary exists (or --tui), and stdin/stdout are TTYs
+    if [[ -z "${FORCE_TUI:-}" && ! ( -t 0 && -t 1 ) ]]; then
+        return 1
+    fi
+
+    local args=()
+    [[ -n "${DRY_RUN:-}" ]] && args+=(--dry-run)
+    [[ -n "${PKG_MGR_FLAG:-}" ]] && args+=(--pkgmgr "$PKG_MGR_FLAG")
+    exec "$tui_bin" "${args[@]}"
+}
+
 # --- main ---
 parse_args "$@"
 init_platform
@@ -285,6 +320,16 @@ if [[ -n "$UNDO_MODE" ]]; then
 fi
 
 if [[ -n "$RUN_COMMAND" ]]; then
+    # JSON export should stay quiet (no gum / success banner)
+    if [[ "$RUN_COMMAND" == "export_wizard_catalog" ]]; then
+        if [[ -n "$PKG_MGR_FLAG" ]]; then
+            PKG_MGR="$PKG_MGR_FLAG"
+        else
+            PKG_MGR="$(default_pkgmgr)"
+        fi
+        export_wizard_catalog
+        exit $?
+    fi
     ensure_gum
     case "$RUN_COMMAND" in
         revert_setup) run_undo "false" ;;
@@ -295,4 +340,4 @@ if [[ -n "$RUN_COMMAND" ]]; then
     exit 0
 fi
 
-run_setup
+maybe_run_tui || run_setup

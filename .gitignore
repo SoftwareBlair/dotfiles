@@ -10,3 +10,4 @@
 !.config/zed/themes/*
 
 .scripts/bin/
+.scripts/tui/dotfiles-setup
