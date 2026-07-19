@@ -14,19 +14,11 @@ _gum_already_available() {
     return 1
 }
 
-_install_gum() {
-    local scripts_bin
+# Download Charm gum into .scripts/bin (fallback when brew install gum fails).
+_install_gum_from_github() {
+    local scripts_bin os arch version asset url tmpdir gum_bin
     scripts_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")/../bin" && pwd)"
 
-    if command -v brew &>/dev/null || ensure_brew_shellenv 2>/dev/null; then
-        echo -e "${Cyan:-}Installing gum via Homebrew…${Off:-}"
-        if brew install gum && command -v gum &>/dev/null; then
-            return 0
-        fi
-        echo -e "${Yellow:-}Homebrew install failed; trying GitHub release…${Off:-}"
-    fi
-
-    local os arch version asset url tmpdir gum_bin
     case "$(uname -s)" in
         Darwin) os="Darwin" ;;
         Linux) os="Linux" ;;
@@ -44,17 +36,13 @@ _install_gum() {
             ;;
     esac
 
-    # Charm asset names include the version: gum_0.17.0_Linux_x86_64.tar.gz
     version="$(
         curl -fsSL --connect-timeout 5 --max-time 20 \
             "https://api.github.com/repos/charmbracelet/gum/releases/latest" 2>/dev/null \
             | sed -n 's/.*"tag_name":[[:space:]]*"v\([^"]*\)".*/\1/p' \
             | head -n 1
     )"
-    if [[ -z "$version" ]]; then
-        version="0.17.0"
-        echo -e "${Yellow:-}Could not resolve latest gum version; using v${version}${Off:-}"
-    fi
+    [[ -z "$version" ]] && version="0.17.0"
 
     asset="gum_${version}_${os}_${arch}.tar.gz"
     url="https://github.com/charmbracelet/gum/releases/download/v${version}/${asset}"
@@ -81,33 +69,51 @@ _install_gum() {
     chmod +x "$scripts_bin/gum"
     export PATH="$scripts_bin:$PATH"
     rm -rf "$tmpdir"
-    if command -v gum &>/dev/null; then
+    command -v gum &>/dev/null
+}
+
+_install_gum_via_brew() {
+    if ! brew_is_available 2>/dev/null; then
+        return 1
+    fi
+    echo -e "${Cyan:-}Installing gum via Homebrew…${Off:-}"
+    if brew install gum && command -v gum &>/dev/null; then
         return 0
     fi
-    echo -e "${Yellow:-}gum installed to ${scripts_bin}/gum but not found on PATH${Off:-}" >&2
     return 1
 }
 
-# Prompt (basic fallback) to install gum when missing — nicer interactive UX.
-# Uses plain read so this works before gum is available. -y skips the offer.
-# Opting in installs gum even during dry-run so the rest of the session can use it.
-# Always returns 0 so setup can continue with basic prompts when gum is unavailable.
+# Offer Homebrew + gum when missing so the rest of setup can use nicer prompts.
+# Uses plain read (gum isn't available yet). -y skips the offer.
+# Opting in installs for real even during dry-run (session UX bootstrap).
+# Always returns 0 so setup can continue with basic prompts when declined/failed.
 ensure_gum() {
     if _gum_already_available; then
         unset GUM_FALLBACK 2>/dev/null || true
         return 0
     fi
 
-    # Non-interactive: keep basic prompts
     if [[ -n "${YES_MODE:-}" ]]; then
         GUM_FALLBACK=1
         return 0
     fi
 
+    local brew_ready=0
+    if brew_is_available 2>/dev/null; then
+        brew_ready=1
+    fi
+
     echo ""
-    echo -e "${Purple:-}gum${Off:-} is not installed. It provides a nicer interactive UI for setup."
-    echo -e "${Purple:-}Install gum for a better experience? (Y/n): ${Off:-}"
     local answer
+    if [[ "$brew_ready" -eq 1 ]]; then
+        echo -e "${Purple:-}gum${Off:-} is not installed. It provides a nicer interactive UI for setup."
+        echo -e "${Purple:-}Install gum with Homebrew for a better experience? (Y/n): ${Off:-}"
+    else
+        echo -e "${Purple:-}Homebrew${Off:-} and ${Purple:-}gum${Off:-} are not installed."
+        echo -e "  Homebrew is the preferred package manager for this setup."
+        echo -e "  gum provides nicer interactive prompts."
+        echo -e "${Purple:-}Install Homebrew and gum for a better setup experience? (Y/n): ${Off:-}"
+    fi
     read -r answer
     if [[ -n "$answer" && "$answer" != [Yy]* ]]; then
         echo -e "${Yellow:-}Using basic prompts.${Off:-}"
@@ -115,12 +121,29 @@ ensure_gum() {
         return 0
     fi
 
-    if _install_gum && command -v gum &>/dev/null; then
+    # Bootstrap for this session — install even if -n dry-run is set
+    local saved_dry="${DRY_RUN:-}"
+    DRY_RUN=""
+
+    if [[ "$brew_ready" -eq 0 ]]; then
+        if ! install_homebrew force; then
+            DRY_RUN="$saved_dry"
+            echo -e "${Yellow:-}Could not install Homebrew — using basic prompts.${Off:-}"
+            GUM_FALLBACK=1
+            return 0
+        fi
+        # Prefer brew for the rest of setup now that it's available
+        PKG_MGR="${PKG_MGR:-brew}"
+    fi
+
+    if _install_gum_via_brew || _install_gum_from_github; then
+        DRY_RUN="$saved_dry"
         unset GUM_FALLBACK 2>/dev/null || true
         echo -e "${Green:-}✓ gum ready${Off:-}"
         return 0
     fi
 
+    DRY_RUN="$saved_dry"
     echo -e "${Yellow:-}Could not install gum — using basic prompts.${Off:-}"
     GUM_FALLBACK=1
     return 0

@@ -22,41 +22,71 @@ ensure_brew_shellenv() {
     return 1
 }
 
+brew_is_available() {
+    command -v brew &>/dev/null || ensure_brew_shellenv
+}
+
+# Append brew shellenv to ~/.zprofile once (so new shells find brew).
+_brew_append_shellenv_zprofile() {
+    local brew_prefix marker_start marker_end
+    brew_prefix="$(brew --prefix 2>/dev/null)" || return 1
+    marker_start="# >>> dotfiles-setup >>>"
+    marker_end="# <<< dotfiles-setup <<<"
+    if grep -qF "$marker_start" "$HOME/.zprofile" 2>/dev/null; then
+        return 0
+    fi
+    {
+        echo ""
+        echo "$marker_start"
+        echo "eval \"\$($brew_prefix/bin/brew shellenv)\""
+        echo "$marker_end"
+    } >> "$HOME/.zprofile"
+    state_log_install "brew-shellenv" "Homebrew shellenv" "config" \
+        "append brew shellenv to ~/.zprofile" "$HOME/.zprofile" \
+        "$HOME/.zprofile" "" "" ""
+}
+
+# Install Homebrew when missing.
+# Pass "force" to install even during dry-run (interactive UX bootstrap).
+install_homebrew() {
+    local force="${1:-}"
+
+    if brew_is_available; then
+        return 0
+    fi
+
+    if dry_run_is_active 2>/dev/null && [[ "$force" != "force" ]]; then
+        dry_run_add_step "Homebrew" \
+            '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"' \
+            "$( [[ "${PLATFORM:-}" == "macos" ]] && echo /opt/homebrew || echo /home/linuxbrew/.linuxbrew )" \
+            "adds brew shellenv to ~/.zprofile" \
+            "true" ""
+        return 0
+    fi
+
+    echo -e "${Cyan:-}Installing Homebrew…${Off:-}"
+    if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
+        echo -e "${Red:-}Homebrew install failed.${Off:-}" >&2
+        return 1
+    fi
+
+    if ! ensure_brew_shellenv; then
+        echo -e "${Red:-}Homebrew installed but brew is not on PATH.${Off:-}" >&2
+        return 1
+    fi
+
+    _brew_append_shellenv_zprofile || true
+    state_log_install "homebrew" "Homebrew" "install" \
+        "Homebrew install script" "$(brew --prefix)" "" "" "" ""
+    echo -e "${Green:-}✓ Homebrew ready${Off:-}"
+    return 0
+}
+
 ensure_pkgmgr() {
     local mgr="${1:-$PKG_MGR}"
     case "$mgr" in
         brew)
-            if ensure_brew_shellenv; then
-                return 0
-            fi
-            if dry_run_is_active; then
-                dry_run_add_step "Homebrew" \
-                    '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"' \
-                    "$( [[ "$PLATFORM" == "macos" ]] && echo /opt/homebrew || echo /home/linuxbrew/.linuxbrew )" \
-                    "adds brew shellenv to ~/.zprofile" \
-                    "true" ""
-                return 0
-            fi
-            prompt_info "Installing Homebrew..."
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            ensure_brew_shellenv || return 1
-            local brew_prefix
-            brew_prefix="$(brew --prefix)"
-            local marker_start="# >>> dotfiles-setup >>>"
-            local marker_end="# <<< dotfiles-setup <<<"
-            if ! grep -q "$marker_start" "$HOME/.zprofile" 2>/dev/null; then
-                {
-                    echo ""
-                    echo "$marker_start"
-                    echo "eval \"\$($brew_prefix/bin/brew shellenv)\""
-                    echo "$marker_end"
-                } >> "$HOME/.zprofile"
-                state_log_install "brew-shellenv" "Homebrew shellenv" "config" \
-                    "append brew shellenv to ~/.zprofile" "$HOME/.zprofile" \
-                    "$HOME/.zprofile" "" "" ""
-            fi
-            state_log_install "homebrew" "Homebrew" "install" \
-                "Homebrew install script" "$brew_prefix" "" "" "" ""
+            install_homebrew || return 1
             ;;
         apt)
             command -v apt-get &>/dev/null || { prompt_error "apt-get not found"; return 1; }
