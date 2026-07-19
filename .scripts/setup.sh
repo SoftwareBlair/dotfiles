@@ -280,19 +280,26 @@ maybe_run_tui() {
     [[ -n "${DOTFILES_NO_TUI:-}" ]] && return 1
 
     local tui_dir="$SCRIPTS_DIR/tui"
-    local tui_bin="$tui_dir/dotfiles-setup"
-    if [[ ! -x "$tui_bin" ]]; then
-        if [[ -n "${FORCE_TUI:-}" ]] && command -v go >/dev/null 2>&1 && [[ -f "$tui_dir/go.mod" ]]; then
-            (cd "$tui_dir" && go build -o dotfiles-setup .) || return 1
-        else
-            [[ -n "${FORCE_TUI:-}" ]] && echo "TUI binary missing. Build with: (cd .scripts/tui && go build -o dotfiles-setup .)" >&2
-            return 1
-        fi
+    local tui_bin=""
+    # Prefer release/install.sh binary, then local build
+    if [[ -x "$SCRIPTS_DIR/bin/dotfiles-setup" ]]; then
+        tui_bin="$SCRIPTS_DIR/bin/dotfiles-setup"
+    elif [[ -x "$tui_dir/dotfiles-setup" ]]; then
+        tui_bin="$tui_dir/dotfiles-setup"
+    elif [[ -n "${FORCE_TUI:-}" ]] && command -v go >/dev/null 2>&1 && [[ -f "$tui_dir/go.mod" ]]; then
+        (cd "$tui_dir" && go build -o dotfiles-setup .) || return 1
+        tui_bin="$tui_dir/dotfiles-setup"
+    else
+        [[ -n "${FORCE_TUI:-}" ]] && echo "TUI binary missing. Install via install.sh or: (cd .scripts/tui && go build -o dotfiles-setup .)" >&2
+        return 1
     fi
 
     # Prefer TUI when binary exists (or --tui), and stdin/stdout are TTYs
     if [[ -z "${FORCE_TUI:-}" && ! ( -t 0 && -t 1 ) ]]; then
-        return 1
+        # Still allow when /dev/tty is available (curl|bash -c installers)
+        if [[ ! -r /dev/tty ]]; then
+            return 1
+        fi
     fi
 
     local args=()

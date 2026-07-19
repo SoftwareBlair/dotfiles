@@ -2,7 +2,35 @@
 
 Personal dotfiles plus a setup script that installs **your usual stack**, then symlinks this repo’s configs into `$HOME`.
 
-## Quick start
+## Quick start (recommended)
+
+One command — no clone, no Go, no `cd`:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
+```
+
+That script will:
+1. Put the repo in `~/dotfiles` (shallow clone, or tarball if `git` is missing)
+2. Download a prebuilt TUI from [GitHub Releases](https://github.com/SoftwareBlair/dotfiles/releases) when available
+3. Launch the setup wizard (bash prompts if no TUI binary yet)
+
+Flags and env vars:
+
+```bash
+# Dry-run first
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)" -- -n
+
+# Force classic prompts (skip TUI download)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)" -- --bash
+
+# Custom location / branch
+DOTFILES_DIR=~/src/dotfiles DOTFILES_REF=main /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
+```
+
+Until a `v*` release exists, the installer falls back to bash prompts (TUI download 404s). After merge, tag `v0.1.0` (or run **Release TUI**) so binaries appear under Releases.
+
+### Manual clone
 
 ```bash
 git clone https://github.com/SoftwareBlair/dotfiles.git
@@ -13,7 +41,7 @@ chmod +x setup.sh
 
 Confirm once (after choosing packages) and it installs. If something is already present and an update is available, you’ll be offered a chance to upgrade it (auto-accepted with `-y`).
 
-Interactive runs prefer the **Go Bubble Tea TUI** when `.scripts/tui/dotfiles-setup` is built (`./setup.sh --tui` builds it if needed). Use `./setup.sh --bash` for classic prompts. Package defaults come from [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) (`MY_SETUP`). `-y` installs the full default set without prompting.
+Interactive runs prefer the **Go Bubble Tea TUI** when a binary is present (from `install.sh` / Releases, or a local `go build`). Use `./setup.sh --bash` for classic prompts. Package defaults come from [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) (`MY_SETUP`). `-y` installs the full default set without prompting.
 
 The repo can live **anywhere**; moving to `~/dotfiles` is optional.
 
@@ -40,6 +68,10 @@ Restart your terminal when finished.
 
 ### TUI (Bubble Tea)
 
+Prebuilt binaries ship on GitHub Releases (built by `.github/workflows/release-tui.yml` on `v*` tags).
+
+Local build / tests:
+
 ```bash
 cd .scripts/tui
 go build -o dotfiles-setup .
@@ -47,7 +79,7 @@ go test ./...
 ./test.sh                  # unit tests + catalog export smoke test
 ```
 
-See [`.scripts/tui/README.md`](.scripts/tui/README.md).
+See [`.scripts/tui/README.md`](.scripts/tui/README.md). To publish a new TUI build: tag `vX.Y.Z` and push (or run the **Release TUI** workflow).
 
 ## What’s installed
 

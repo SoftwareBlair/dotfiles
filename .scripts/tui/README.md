@@ -2,6 +2,16 @@
 
 Go terminal UI for the new-machine setup wizard. It loads the package catalog from bash (`setup.sh -c export_wizard_catalog`), lets you pick a package manager and packages, then runs the existing bash engine non-interactively.
 
+## Install (no Go required)
+
+End users should use the repo root one-liner — it clones/tarballs the repo, downloads a prebuilt binary from GitHub Releases into `.scripts/bin/dotfiles-setup`, and launches the wizard:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
+```
+
+Binaries are published by `.github/workflows/release-tui.yml` on `v*` tags (`dotfiles-setup-{linux,darwin}-{amd64,arm64}`).
+
 ## Build
 
 ```bash
@@ -12,7 +22,7 @@ go build -o dotfiles-setup .
 ## Run
 
 ```bash
-# From .scripts — prefers the TUI when the binary exists
+# From .scripts — prefers .scripts/bin/dotfiles-setup, then ./tui/dotfiles-setup
 ./setup.sh --tui
 ./setup.sh --tui -n          # start in dry-run mode
 ./setup.sh --bash            # classic gum/bash prompts
