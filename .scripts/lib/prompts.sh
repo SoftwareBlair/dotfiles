@@ -20,41 +20,71 @@ _install_gum() {
 
     if command -v brew &>/dev/null || ensure_brew_shellenv 2>/dev/null; then
         echo -e "${Cyan:-}Installing gum via Homebrew…${Off:-}"
-        if brew install gum &>/dev/null && command -v gum &>/dev/null; then
+        if brew install gum && command -v gum &>/dev/null; then
             return 0
         fi
+        echo -e "${Yellow:-}Homebrew install failed; trying GitHub release…${Off:-}"
     fi
 
-    local os arch asset tmpdir gum_bin
+    local os arch version asset url tmpdir gum_bin
     case "$(uname -s)" in
         Darwin) os="Darwin" ;;
         Linux) os="Linux" ;;
-        *) return 1 ;;
+        *)
+            echo -e "${Yellow:-}Unsupported OS for gum download: $(uname -s)${Off:-}" >&2
+            return 1
+            ;;
     esac
     case "$(uname -m)" in
         x86_64|amd64) arch="x86_64" ;;
         aarch64|arm64) arch="arm64" ;;
-        *) return 1 ;;
+        *)
+            echo -e "${Yellow:-}Unsupported architecture for gum download: $(uname -m)${Off:-}" >&2
+            return 1
+            ;;
     esac
 
-    asset="gum_${os}_${arch}.tar.gz"
-    tmpdir="$(mktemp -d)"
-    echo -e "${Cyan:-}Downloading gum…${Off:-}"
-    if curl -fsSL --connect-timeout 5 --max-time 45 \
-        "https://github.com/charmbracelet/gum/releases/latest/download/${asset}" \
-        -o "$tmpdir/gum.tgz" 2>/dev/null; then
-        tar -xzf "$tmpdir/gum.tgz" -C "$tmpdir" 2>/dev/null
-        gum_bin="$(find "$tmpdir" -type f -name gum | head -1)"
-        if [[ -n "$gum_bin" ]]; then
-            mkdir -p "$scripts_bin"
-            cp "$gum_bin" "$scripts_bin/gum"
-            chmod +x "$scripts_bin/gum"
-            export PATH="$scripts_bin:$PATH"
-            rm -rf "$tmpdir"
-            command -v gum &>/dev/null && return 0
-        fi
+    # Charm asset names include the version: gum_0.17.0_Linux_x86_64.tar.gz
+    version="$(
+        curl -fsSL --connect-timeout 5 --max-time 20 \
+            "https://api.github.com/repos/charmbracelet/gum/releases/latest" 2>/dev/null \
+            | sed -n 's/.*"tag_name":[[:space:]]*"v\([^"]*\)".*/\1/p' \
+            | head -n 1
+    )"
+    if [[ -z "$version" ]]; then
+        version="0.17.0"
+        echo -e "${Yellow:-}Could not resolve latest gum version; using v${version}${Off:-}"
     fi
+
+    asset="gum_${version}_${os}_${arch}.tar.gz"
+    url="https://github.com/charmbracelet/gum/releases/download/v${version}/${asset}"
+    tmpdir="$(mktemp -d)"
+    echo -e "${Cyan:-}Downloading gum v${version}…${Off:-}"
+    if ! curl -fsSL --connect-timeout 5 --max-time 60 "$url" -o "$tmpdir/gum.tgz"; then
+        echo -e "${Yellow:-}Failed to download ${asset}${Off:-}" >&2
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    if ! tar -xzf "$tmpdir/gum.tgz" -C "$tmpdir"; then
+        echo -e "${Yellow:-}Failed to extract gum archive${Off:-}" >&2
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    gum_bin="$(find "$tmpdir" -type f -name gum | head -n 1)"
+    if [[ -z "$gum_bin" || ! -f "$gum_bin" ]]; then
+        echo -e "${Yellow:-}gum binary not found in archive${Off:-}" >&2
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    mkdir -p "$scripts_bin"
+    cp "$gum_bin" "$scripts_bin/gum"
+    chmod +x "$scripts_bin/gum"
+    export PATH="$scripts_bin:$PATH"
     rm -rf "$tmpdir"
+    if command -v gum &>/dev/null; then
+        return 0
+    fi
+    echo -e "${Yellow:-}gum installed to ${scripts_bin}/gum but not found on PATH${Off:-}" >&2
     return 1
 }
 
