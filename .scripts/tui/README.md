@@ -25,12 +25,15 @@ go build -o dotfiles-setup .
 # From .scripts — prefers .scripts/bin/dotfiles-setup, then ./tui/dotfiles-setup
 ./setup.sh --tui
 ./setup.sh --tui -n          # start in dry-run mode
+./setup.sh --profile SoftwareBlair --tui
 ./setup.sh --bash            # classic gum/bash prompts
 
 # Or run the binary directly
-./tui/dotfiles-setup --dry-run --pkgmgr apt
+./tui/dotfiles-setup --dry-run --pkgmgr apt --profile SoftwareBlair
 ./tui/dotfiles-setup --catalog testdata/catalog_linux_apt.json --dry-run
 ```
+
+Profiles live in `profiles/<GitHubUsername>.toml` (see `profiles/README.md`).
 
 ## Tests
 

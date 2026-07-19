@@ -64,7 +64,7 @@ catalog_available() {
     return 1
 }
 
-# Items in MY_SETUP are treated as "defaults" in pickers
+# Items from the loaded profile (MY_SETUP*) are treated as "defaults" in pickers
 catalog_is_default() {
     local id="$1"
     local defaults="${DEFAULT_CATALOG_IDS:-}"

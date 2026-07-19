@@ -13,8 +13,12 @@ report_skip() { INSTALL_REPORT_SKIP+=("$1"); }
 report_fail() { INSTALL_REPORT_FAIL+=("$1"); }
 report_config() { INSTALL_REPORT_CONFIG+=("$1"); }
 
-# Resolve DOTFILES_DIR for shell configs (may live outside ~/dotfiles)
+# Resolve config root for shell configs (profile overlay, or repo root)
 resolve_dotfiles_dir() {
+    if [[ -n "${PROFILE_CONFIG_ROOT:-}" && -d "$PROFILE_CONFIG_ROOT" ]]; then
+        echo "$PROFILE_CONFIG_ROOT"
+        return
+    fi
     if [[ -n "${DOTFILES_DIR:-}" && -d "$DOTFILES_DIR" ]]; then
         echo "$DOTFILES_DIR"
         return
@@ -30,6 +34,16 @@ resolve_dotfiles_dir() {
         return
     fi
     echo "$HOME/dotfiles"
+}
+
+# Source path for a profile (or repo) relative file
+profile_config_source() {
+    local rel="$1"
+    if [[ -n "${PROFILE_CONFIG_ROOT:-}" ]]; then
+        echo "$PROFILE_CONFIG_ROOT/$rel"
+        return
+    fi
+    echo "${DOTFILES_DIR:-}/$rel"
 }
 
 # Write features file consumed by .zshrc
@@ -80,7 +94,8 @@ configure_starship() {
 # Install path into home (symlink or copy)
 install_dotfile_path() {
     local rel="$1"
-    local source="$DOTFILES_DIR/$rel"
+    local source
+    source="$(profile_config_source "$rel")"
     local target="$HOME/$rel"
 
     if [[ ! -e "$source" ]]; then

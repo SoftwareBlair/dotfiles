@@ -11,7 +11,8 @@ import (
 type Step int
 
 const (
-	StepPkgMgr Step = iota
+	StepProfile Step = iota
+	StepPkgMgr
 	StepPackages
 	StepConfirm
 	StepRunning
@@ -21,6 +22,8 @@ const (
 
 func (s Step) String() string {
 	switch s {
+	case StepProfile:
+		return "profile"
 	case StepPkgMgr:
 		return "pkgmgr"
 	case StepPackages:
@@ -44,6 +47,9 @@ type State struct {
 
 	Step Step
 
+	ProfileIndex int
+	ProfileID    string
+
 	PkgMgrIndex int
 	PkgMgr      string
 
@@ -60,8 +66,35 @@ type State struct {
 
 // New builds initial state from a catalog snapshot.
 func New(snap catalog.Snapshot, dryRun bool) State {
+	profileIndex := 0
+	profileID := snap.ActiveProfile
+	for i, p := range snap.Profiles {
+		if p.Default || p.ID == snap.ActiveProfile {
+			profileIndex = i
+			profileID = p.ID
+			break
+		}
+	}
+	if profileID == "" && len(snap.Profiles) > 0 {
+		profileID = snap.Profiles[0].ID
+		profileIndex = 0
+	}
+
+	// Prefer embedded profile packages when available
+	packages := snap.Packages
+	for _, p := range snap.Profiles {
+		if p.ID == profileID && len(p.Packages) > 0 {
+			packages = p.Packages
+			snap.Packages = packages
+			snap.ActiveProfile = profileID
+			snap.ProfileName = p.Name
+			snap.ProfileDescription = p.Description
+			break
+		}
+	}
+
 	selected := make(map[string]bool)
-	for _, p := range snap.Packages {
+	for _, p := range packages {
 		if p.Default {
 			selected[p.ID] = true
 		}
@@ -92,13 +125,17 @@ func New(snap catalog.Snapshot, dryRun bool) State {
 	}
 
 	start := StepPackages
-	if len(snap.PkgMgrOptions) > 1 {
+	if len(snap.Profiles) > 1 {
+		start = StepProfile
+	} else if len(snap.PkgMgrOptions) > 1 {
 		start = StepPkgMgr
 	}
 
 	return State{
 		Snapshot:      snap,
 		Step:          start,
+		ProfileIndex:  profileIndex,
+		ProfileID:     profileID,
 		PkgMgrIndex:   pkgMgrIndex,
 		PkgMgr:        pkgMgr,
 		PackageCursor: 0,
@@ -134,6 +171,29 @@ func (s State) SelectionCSV() string {
 	return strings.Join(s.SelectedIDs(), " ")
 }
 
+// ApplyProfile switches the active profile and resets package defaults.
+func (s *State) ApplyProfile(index int) {
+	if index < 0 || index >= len(s.Snapshot.Profiles) {
+		return
+	}
+	p := s.Snapshot.Profiles[index]
+	s.ProfileIndex = index
+	s.ProfileID = p.ID
+	s.Snapshot.ActiveProfile = p.ID
+	s.Snapshot.ProfileName = p.Name
+	s.Snapshot.ProfileDescription = p.Description
+	if len(p.Packages) > 0 {
+		s.Snapshot.Packages = p.Packages
+	}
+	s.PackageCursor = 0
+	s.Selected = make(map[string]bool)
+	for _, pkg := range s.Snapshot.Packages {
+		if pkg.Default {
+			s.Selected[pkg.ID] = true
+		}
+	}
+}
+
 // TogglePackage toggles selection at the current cursor.
 func (s *State) TogglePackage() {
 	if s.Step != StepPackages || len(s.Snapshot.Packages) == 0 {
@@ -162,6 +222,15 @@ func (s *State) MovePkgMgr(delta int) {
 	s.PkgMgr = s.Snapshot.PkgMgrOptions[s.PkgMgrIndex].ID
 }
 
+// MoveProfile moves the profile cursor.
+func (s *State) MoveProfile(delta int) {
+	n := len(s.Snapshot.Profiles)
+	if n == 0 {
+		return
+	}
+	s.ProfileIndex = (s.ProfileIndex + delta%n + n) % n
+}
+
 // SelectAllPackages marks every package selected.
 func (s *State) SelectAllPackages() {
 	for _, p := range s.Snapshot.Packages {
@@ -169,7 +238,7 @@ func (s *State) SelectAllPackages() {
 	}
 }
 
-// SelectDefaultPackages restores MY_SETUP defaults.
+// SelectDefaultPackages restores profile defaults.
 func (s *State) SelectDefaultPackages() {
 	for _, p := range s.Snapshot.Packages {
 		s.Selected[p.ID] = p.Default
@@ -186,6 +255,13 @@ func (s *State) ClearPackages() {
 // Next advances to the next step when valid.
 func (s *State) Next() error {
 	switch s.Step {
+	case StepProfile:
+		s.ApplyProfile(s.ProfileIndex)
+		if len(s.Snapshot.PkgMgrOptions) > 1 {
+			s.Step = StepPkgMgr
+		} else {
+			s.Step = StepPackages
+		}
 	case StepPkgMgr:
 		if len(s.Snapshot.PkgMgrOptions) > 0 {
 			s.PkgMgr = s.Snapshot.PkgMgrOptions[s.PkgMgrIndex].ID
@@ -207,9 +283,15 @@ func (s *State) Next() error {
 // Back returns to the previous step.
 func (s *State) Back() {
 	switch s.Step {
+	case StepPkgMgr:
+		if len(s.Snapshot.Profiles) > 1 {
+			s.Step = StepProfile
+		}
 	case StepPackages:
 		if len(s.Snapshot.PkgMgrOptions) > 1 {
 			s.Step = StepPkgMgr
+		} else if len(s.Snapshot.Profiles) > 1 {
+			s.Step = StepProfile
 		}
 	case StepConfirm:
 		s.Step = StepPackages
@@ -232,9 +314,14 @@ func (s *State) FinishRun(output string, err error) {
 
 // SummaryLines is a stable text summary for tests / confirm view.
 func (s State) SummaryLines() []string {
+	profileLabel := s.ProfileID
+	if s.Snapshot.ProfileName != "" {
+		profileLabel = fmt.Sprintf("%s (@%s)", s.Snapshot.ProfileName, s.ProfileID)
+	}
 	lines := []string{
 		"New machine setup",
 		fmt.Sprintf("Platform: %s", s.Snapshot.PlatformLabel),
+		fmt.Sprintf("Profile: %s", profileLabel),
 		fmt.Sprintf("Package manager: %s", s.PkgMgr),
 		fmt.Sprintf("Mode: %s", map[bool]string{true: "DRY RUN", false: "INSTALL"}[s.DryRun]),
 		"Selected packages:",

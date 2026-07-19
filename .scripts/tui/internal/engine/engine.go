@@ -20,6 +20,7 @@ type Runner struct {
 // Request is a non-interactive setup invocation.
 type Request struct {
 	PkgMgr       string
+	Profile      string
 	SelectionIDs []string
 	DryRun       bool
 	Yes          bool
@@ -48,6 +49,9 @@ func (r Runner) Run(req Request) (Result, error) {
 	if req.DryRun {
 		args = append(args, "-n")
 	}
+	if req.Profile != "" {
+		args = append(args, "--profile", req.Profile)
+	}
 	if req.PkgMgr != "" {
 		args = append(args, "--pkgmgr", req.PkgMgr)
 	}
@@ -60,6 +64,7 @@ func (r Runner) Run(req Request) (Result, error) {
 	}
 	env = append(env,
 		"SETUP_SELECTION_IDS="+strings.Join(req.SelectionIDs, " "),
+		"SETUP_PROFILE="+req.Profile,
 		"DOTFILES_NO_TUI=1",
 	)
 	cmd.Env = env

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Developer software catalog — tools used by MY_SETUP
+# Developer software catalog — tools used by community profiles
 
 catalog_register "cursor" \
     "name=Cursor" \

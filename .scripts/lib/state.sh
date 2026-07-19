@@ -116,6 +116,7 @@ save_setup_prefs() {
     {
         echo "PKG_MGR=${PKG_MGR:-}"
         echo "LAST_PRESET=${PRESET_NAME:-}"
+        echo "LAST_PROFILE=${PROFILE_ID:-}"
         echo "LAST_SELECTION_IDS=\"${SELECTED_IDS[*]:-}\""
         echo "LAST_SHELL_PROFILE=${SHELL_PROFILE_MODE:-}"
         echo "LAST_LINK_MODE=${LINK_MODE:-symlink}"

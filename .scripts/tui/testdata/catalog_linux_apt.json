@@ -1,4 +1,5 @@
 {
+  "active_profile": "SoftwareBlair",
   "dotfiles_dir": "/home/user/dotfiles",
   "dry_run": true,
   "packages": [
@@ -52,5 +53,52 @@
     }
   ],
   "platform": "linux",
-  "platform_label": "Linux · ubuntu · amd64"
+  "platform_label": "Linux · ubuntu · amd64",
+  "profile_description": "Warp · SFMono · Starship · eza · Cursor · Zed",
+  "profile_name": "Blair",
+  "profiles": [
+    {
+      "default": true,
+      "description": "Warp · SFMono · Starship · eza · Cursor · Zed",
+      "id": "SoftwareBlair",
+      "name": "Blair",
+      "packages": [
+        {
+          "category": "fonts",
+          "default": true,
+          "description": "Patched SF Mono",
+          "id": "sfmono_nerd",
+          "name": "SFMono Nerd Font"
+        },
+        {
+          "category": "dev-tools",
+          "default": true,
+          "description": "Prompt",
+          "id": "starship",
+          "name": "Starship"
+        },
+        {
+          "category": "dev-tools",
+          "default": true,
+          "description": "ls replacement",
+          "id": "eza",
+          "name": "eza"
+        },
+        {
+          "category": "dev-tools",
+          "default": true,
+          "description": "Editor",
+          "id": "cursor",
+          "name": "Cursor"
+        },
+        {
+          "category": "dev-tools",
+          "default": true,
+          "description": "Optional editor",
+          "id": "vscode",
+          "name": "VS Code"
+        }
+      ]
+    }
+  ]
 }

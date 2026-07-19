@@ -93,6 +93,7 @@ func TestSummaryLinesStable(t *testing.T) {
 	want := strings.TrimSpace(`
 New machine setup
 Platform: Linux · ubuntu · amd64
+Profile: Blair (@SoftwareBlair)
 Package manager: apt
 Mode: DRY RUN
 Selected packages:

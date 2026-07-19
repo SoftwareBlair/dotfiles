@@ -16,6 +16,7 @@ import (
 func main() {
 	dryRun := flag.Bool("dry-run", false, "start in dry-run mode")
 	pkgMgr := flag.String("pkgmgr", "", "package manager (brew|apt|dnf|pacman)")
+	profile := flag.String("profile", "", "setup profile (GitHub username, e.g. SoftwareBlair)")
 	catalogFile := flag.String("catalog", "", "load catalog JSON from file (tests / offline)")
 	flag.Parse()
 
@@ -29,7 +30,7 @@ func main() {
 	if *catalogFile != "" {
 		snap, err = catalog.LoadFile(*catalogFile)
 	} else {
-		snap, err = catalog.LoadFromSetup(setupPath, *pkgMgr, *dryRun)
+		snap, err = catalog.LoadFromSetup(setupPath, *pkgMgr, *dryRun, *profile)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load catalog: %v\n", err)

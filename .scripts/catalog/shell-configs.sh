@@ -1,5 +1,5 @@
 #!/bin/bash
-# Shell configuration tools used by MY_SETUP
+# Shell configuration tools used by community profiles
 
 catalog_register "starship" \
     "name=Starship" \

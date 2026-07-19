@@ -86,7 +86,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.quitting = true
 		return m, tea.Quit
 	case "esc":
-		if m.State.Step == wizard.StepPkgMgr || (m.State.Step == wizard.StepPackages && len(m.State.Snapshot.PkgMgrOptions) <= 1) {
+		if m.State.Step == wizard.StepProfile ||
+			(m.State.Step == wizard.StepPkgMgr && len(m.State.Snapshot.Profiles) <= 1) ||
+			(m.State.Step == wizard.StepPackages && len(m.State.Snapshot.PkgMgrOptions) <= 1 && len(m.State.Snapshot.Profiles) <= 1) {
 			m.State.Cancel()
 			m.quitting = true
 			return m, tea.Quit
@@ -97,6 +99,15 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch m.State.Step {
+	case wizard.StepProfile:
+		switch msg.String() {
+		case "up", "k":
+			m.State.MoveProfile(-1)
+		case "down", "j":
+			m.State.MoveProfile(1)
+		case "enter", " ":
+			_ = m.State.Next()
+		}
 	case wizard.StepPkgMgr:
 		switch msg.String() {
 		case "up", "k":
@@ -147,6 +158,7 @@ func (m Model) runEngine() tea.Cmd {
 	return func() tea.Msg {
 		res, err := eng.Run(engine.Request{
 			PkgMgr:       st.PkgMgr,
+			Profile:      st.ProfileID,
 			SelectionIDs: st.SelectedIDs(),
 			DryRun:       st.DryRun,
 			Yes:          true,
@@ -173,6 +185,8 @@ func (m Model) View() string {
 	b.WriteString("\n\n")
 
 	switch m.State.Step {
+	case wizard.StepProfile:
+		b.WriteString(m.viewProfile())
 	case wizard.StepPkgMgr:
 		b.WriteString(m.viewPkgMgr())
 	case wizard.StepPackages:
@@ -195,6 +209,30 @@ func (m Model) View() string {
 	b.WriteString("\n\n")
 	b.WriteString(dimStyle.Render(m.helpLine()))
 	b.WriteString("\n")
+	return b.String()
+}
+
+func (m Model) viewProfile() string {
+	var b strings.Builder
+	b.WriteString(selStyle.Render("Setup profile"))
+	b.WriteString("  ")
+	b.WriteString(dimStyle.Render("GitHub username"))
+	b.WriteString("\n\n")
+	for i, p := range m.State.Snapshot.Profiles {
+		cursor := "  "
+		if i == m.State.ProfileIndex {
+			cursor = "> "
+		}
+		line := fmt.Sprintf("%s%s (@%s)", cursor, p.Name, p.ID)
+		if p.Description != "" {
+			line += " — " + p.Description
+		}
+		if i == m.State.ProfileIndex {
+			line = selStyle.Render(line)
+		}
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
 	return b.String()
 }
 
@@ -287,8 +325,10 @@ func (m Model) viewDone() string {
 
 func (m Model) helpLine() string {
 	switch m.State.Step {
-	case wizard.StepPkgMgr:
+	case wizard.StepProfile:
 		return "↑/↓ move · enter select · q quit"
+	case wizard.StepPkgMgr:
+		return "↑/↓ move · enter select · esc back · q quit"
 	case wizard.StepPackages:
 		return "↑/↓ move · space toggle · a all · d defaults · enter continue · esc back · q quit"
 	case wizard.StepConfirm:

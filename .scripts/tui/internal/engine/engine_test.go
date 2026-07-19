@@ -24,6 +24,7 @@ func TestRunPassesSelectionAndFlags(t *testing.T) {
 	r := engine.Runner{SetupPath: script, Environ: []string{"PATH=" + os.Getenv("PATH")}}
 	res, err := r.Run(engine.Request{
 		PkgMgr:       "apt",
+		Profile:      "SoftwareBlair",
 		SelectionIDs: []string{"cursor", "starship"},
 		DryRun:       true,
 		Yes:          true,
@@ -32,7 +33,7 @@ func TestRunPassesSelectionAndFlags(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 	out := res.Stdout
-	if !strings.Contains(out, "ARGS:-y -n --pkgmgr apt --bash") {
+	if !strings.Contains(out, "ARGS:-y -n --profile SoftwareBlair --pkgmgr apt --bash") {
 		t.Fatalf("unexpected args line:\n%s", out)
 	}
 	if !strings.Contains(out, "SELECTION:cursor starship") {

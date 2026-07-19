@@ -1,0 +1,42 @@
+# Community setup profile — filename must match the GitHub username.
+github = "SoftwareBlair"
+name = "Blair"
+description = "Warp · SFMono · Starship · eza · Cursor · Zed"
+
+# Catalog package IDs (see .scripts/catalog/). These are the wizard defaults.
+packages = [
+  "sfmono_nerd",
+  "starship",
+  "eza",
+  "warp",
+  "cursor",
+  "zed",
+  "zsh",
+  "nvm",
+  "zsh_autosuggestions",
+  "zsh_syntax_highlighting",
+  "z",
+]
+
+# Appended on macOS
+packages_macos = ["raycast"]
+
+# Included when a recipe exists for this OS / package manager
+packages_optional = ["vscode"]
+
+# Paths under config_root, symlinked into $HOME
+link = [".zshrc", ".zshenv", ".config"]
+
+# Where this profile’s config files live (relative to the repo root).
+# "." keeps Blair’s configs at the repository root.
+config_root = "."
+
+# Help-screen blurbs (setup.sh -h)
+help_editors = "Cursor (default), Zed · VS Code optional"
+help_terminal = "Warp · SFMono · Starship · eza"
+help_shell = "zsh + plugins · NVM · Raycast (macOS)"
+
+# Extra links when a package is selected (package id → paths)
+# Keep this table last so following keys are not absorbed into it.
+[link_if]
+warp = [".warp"]

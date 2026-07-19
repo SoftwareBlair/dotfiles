@@ -24,6 +24,8 @@ source "$SCRIPTS_DIR/lib/installer.sh"
 # shellcheck disable=SC1091
 source "$SCRIPTS_DIR/lib/undo.sh"
 # shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/profiles.sh"
+# shellcheck disable=SC1091
 source "$SCRIPTS_DIR/lib/presets.sh"
 # shellcheck disable=SC1091
 source "$SCRIPTS_DIR/lib/configure.sh"
@@ -38,6 +40,7 @@ PKG_MGR_FLAG=""
 RUN_COMMAND=""
 FORCE_TUI=""
 FORCE_BASH=""
+PROFILE_FLAG=""
 
 usage() {
     local b="${BCyan:-}" d="${BrBlack:-}" o="${Off:-}"
@@ -63,20 +66,20 @@ usage() {
     echo -e "    ${g}./setup.sh --undo${o}            Reverse logged actions"
     echo -e "    ${g}./setup.sh --undo -n${o}         Preview undo"
     echo -e "    ${g}./setup.sh --undo --select${o}   Choose what to reverse"
+    echo -e "    ${g}./setup.sh --profile${o} ${d}<user>${o}  GitHub username profile (e.g. SoftwareBlair)"
     echo -e "    ${g}./setup.sh --pkgmgr${o} ${d}<name>${o}   brew · apt · dnf · pacman"
     echo -e "    ${g}./setup.sh -c${o} ${d}<helper>${o}       export_wizard_catalog · move_dotfiles · …"
     echo ""
     echo -e "  ${w}Defaults${o}"
+    echo -e "    ${d}profile${o}   ${DEFAULT_PROFILE:-SoftwareBlair} (see profiles/*.toml)"
     echo -e "    ${d}pkgmgr${o}    Homebrew (system manager on Linux if brew missing)"
-    echo -e "    ${d}editor${o}    Cursor"
-    echo -e "    ${d}prompt${o}    Starship + this repo’s .zshrc"
     echo -e "    ${d}dotfiles${o}  Symlink (repo can live anywhere)"
     echo -e "    ${d}updates${o}   Offer upgrade when already installed"
     echo ""
     echo -e "  ${w}More${o}"
-    echo -e "    ${d}stack${o}     edit MY_SETUP in .scripts/lib/presets.sh (picker defaults)"
+    echo -e "    ${d}profiles${o}  profiles/<GitHubUser>.toml — contribute your setup"
     echo -e "    ${d}state${o}     ~/.dotfiles-setup/"
-    echo -e "    ${d}docs${o}      README.md"
+    echo -e "    ${d}docs${o}      README.md · profiles/README.md"
     echo ""
 }
 
@@ -90,6 +93,14 @@ parse_args() {
             --bash) FORCE_BASH=1; shift ;;
             --undo) UNDO_MODE=1; shift ;;
             --select) UNDO_SELECT=true; shift ;;
+            --profile)
+                PROFILE_FLAG="${2:-}"
+                if [[ -z "$PROFILE_FLAG" ]]; then
+                    echo "Missing value for --profile" >&2
+                    exit 1
+                fi
+                shift 2
+                ;;
             --pkgmgr)
                 PKG_MGR_FLAG="${2:-}"
                 if [[ -z "$PKG_MGR_FLAG" ]]; then
@@ -161,14 +172,6 @@ pick_pkgmgr() {
     esac
 }
 
-set_default_symlinks() {
-    # .config covers starship.toml and .config/zed — no nested duplicate
-    SYMLINK_TARGETS=(".zshrc" ".zshenv" ".config")
-    [[ " ${SELECTED_IDS[*]} " == *" warp "* ]] && SYMLINK_TARGETS+=(".warp")
-    LINK_MODE="symlink"
-    SHELL_PROFILE_MODE="starship"
-}
-
 run_setup() {
     state_init
     load_setup_prefs
@@ -176,7 +179,6 @@ run_setup() {
 
     prompt_welcome "New machine setup" "$(platform_label)"
     prompt_info "Dotfiles: $DOTFILES_DIR"
-    prompt_info "Stack: ${HELP_INCLUDES_TERMINAL:-SFMono, Starship, eza, …} · Cursor · Zed"
     dry_run_is_active && prompt_info "Dry-run: same prompts as a real run; nothing will be installed or linked."
 
     if [[ "$DOTFILES_DIR" != "$HOME/dotfiles" && -z "${YES_MODE:-}" ]]; then
@@ -200,6 +202,13 @@ run_setup() {
         esac
     fi
 
+    if ! pick_profile; then
+        exit 1
+    fi
+    if [[ -n "${PROFILE_DESCRIPTION:-}" ]]; then
+        prompt_info "Stack: $PROFILE_DESCRIPTION"
+    fi
+
     pick_pkgmgr
     prompt_info "Package manager: $PKG_MGR"
 
@@ -212,7 +221,7 @@ run_setup() {
     if ! pick_my_setup; then
         exit 1
     fi
-    set_default_symlinks
+    profile_apply_symlinks
 
     echo ""
     print_my_setup_summary
@@ -305,6 +314,7 @@ maybe_run_tui() {
     local args=()
     [[ -n "${DRY_RUN:-}" ]] && args+=(--dry-run)
     [[ -n "${PKG_MGR_FLAG:-}" ]] && args+=(--pkgmgr "$PKG_MGR_FLAG")
+    [[ -n "${PROFILE_FLAG:-}" ]] && args+=(--profile "$PROFILE_FLAG")
     exec "$tui_bin" "${args[@]}"
 }
 
@@ -334,6 +344,7 @@ if [[ -n "$RUN_COMMAND" ]]; then
         else
             PKG_MGR="$(default_pkgmgr)"
         fi
+        # PROFILE_FLAG / SETUP_PROFILE / DOTFILES_PROFILE honored inside export
         export_wizard_catalog
         exit $?
     fi

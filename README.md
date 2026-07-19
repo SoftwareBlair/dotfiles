@@ -41,7 +41,7 @@ chmod +x setup.sh
 
 Confirm once (after choosing packages) and it installs. If something is already present and an update is available, you’ll be offered a chance to upgrade it (auto-accepted with `-y`).
 
-Interactive runs prefer the **Go Bubble Tea TUI** when a binary is present (from `install.sh` / Releases, or a local `go build`). Use `./setup.sh --bash` for classic prompts. Package defaults come from [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) (`MY_SETUP`). `-y` installs the full default set without prompting.
+Interactive runs prefer the **Go Bubble Tea TUI** when a binary is present (from `install.sh` / Releases, or a local `go build`). Use `./setup.sh --bash` for classic prompts. Package defaults come from a **community profile** under [`profiles/`](profiles/) (GitHub username TOML, default [`SoftwareBlair.toml`](profiles/SoftwareBlair.toml)). `-y` installs that profile’s full default set without prompting.
 
 The repo can live **anywhere**; moving to `~/dotfiles` is optional.
 
@@ -57,7 +57,8 @@ Restart your terminal when finished.
 ./setup.sh                 # TUI wizard (bash fallback if TUI not built)
 ./setup.sh --tui           # force Go Bubble Tea TUI
 ./setup.sh --bash          # classic prompts
-./setup.sh -y              # non-interactive install (full defaults)
+./setup.sh --profile SoftwareBlair
+./setup.sh -y              # non-interactive install (profile defaults)
 ./setup.sh -n              # dry-run (same prompts, no changes)
 ./setup.sh -y -n           # non-interactive dry-run
 ./setup.sh --pkgmgr apt    # brew | apt | dnf | pacman
@@ -83,7 +84,7 @@ See [`.scripts/tui/README.md`](.scripts/tui/README.md). To publish a new TUI bui
 
 ## What’s installed
 
-Defined in [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh):
+Defaults come from the selected profile — see [`profiles/SoftwareBlair.toml`](profiles/SoftwareBlair.toml):
 
 | Item | Notes |
 |------|--------|
@@ -95,10 +96,12 @@ Defined in [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh):
 | Zed | Fast editor (settings under `.config/zed`) |
 | zsh + autosuggestions + syntax-highlighting + z | Shell plugins |
 | NVM | Node version manager |
-| Raycast | macOS only (`MY_SETUP_MACOS`) |
-| VS Code | Optional when a recipe exists (`MY_SETUP_OPTIONAL`) |
+| Raycast | macOS only (`packages_macos`) |
+| VS Code | Optional when a recipe exists (`packages_optional`) |
 
-To change the stack, edit `MY_SETUP`, `MY_SETUP_MACOS`, or `MY_SETUP_OPTIONAL` in `presets.sh`.
+### Contribute your setup
+
+Add `profiles/YourGitHubUsername.toml` (and optional configs under `profiles/YourGitHubUsername/`). See [`profiles/README.md`](profiles/README.md).
 
 ## Package managers
 
@@ -142,7 +145,9 @@ Setup can create or extend **`~/.zprofile`** for local secrets (API keys, tokens
 | [`.config/zed/`](.config/zed/) | Zed settings / themes |
 | [`.warp/`](.warp/) | Warp settings / themes |
 | [`.scripts/setup.sh`](.scripts/setup.sh) | Installer entrypoint |
-| [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) | Default stack definition |
+| [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) | Stack selection helpers |
+| [`.scripts/lib/profiles.sh`](.scripts/lib/profiles.sh) | Load `profiles/<GitHubUser>.toml` |
+| [`profiles/`](profiles/) | Community setups (TOML + optional config trees) |
 | [`.scripts/catalog/`](.scripts/catalog/) | Install recipes |
 
 ## Undo

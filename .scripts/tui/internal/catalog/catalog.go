@@ -24,15 +24,28 @@ type PkgMgrOption struct {
 	Default bool   `json:"default"`
 }
 
+// Profile is a community setup (profiles/<GitHubUsername>.toml).
+type Profile struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Default     bool      `json:"default"`
+	Packages    []Package `json:"packages"`
+}
+
 // Snapshot is the JSON document produced by `setup.sh -c export_wizard_catalog`.
 type Snapshot struct {
-	Platform      string         `json:"platform"`
-	PlatformLabel string         `json:"platform_label"`
-	PkgMgr        string         `json:"pkgmgr"`
-	DotfilesDir   string         `json:"dotfiles_dir"`
-	DryRun        bool           `json:"dry_run"`
-	Packages      []Package      `json:"packages"`
-	PkgMgrOptions []PkgMgrOption `json:"pkgmgr_options"`
+	Platform           string         `json:"platform"`
+	PlatformLabel      string         `json:"platform_label"`
+	PkgMgr             string         `json:"pkgmgr"`
+	DotfilesDir        string         `json:"dotfiles_dir"`
+	DryRun             bool           `json:"dry_run"`
+	ActiveProfile      string         `json:"active_profile"`
+	ProfileName        string         `json:"profile_name"`
+	ProfileDescription string         `json:"profile_description"`
+	Packages           []Package      `json:"packages"`
+	Profiles           []Profile      `json:"profiles"`
+	PkgMgrOptions      []PkgMgrOption `json:"pkgmgr_options"`
 }
 
 // LoadFile reads a catalog snapshot from disk (fixtures / tests).
@@ -54,13 +67,16 @@ func Parse(data []byte) (Snapshot, error) {
 }
 
 // LoadFromSetup runs the bash exporter and returns a snapshot.
-func LoadFromSetup(setupPath string, pkgMgr string, dryRun bool) (Snapshot, error) {
+func LoadFromSetup(setupPath string, pkgMgr string, dryRun bool, profile string) (Snapshot, error) {
 	args := []string{}
 	if dryRun {
 		args = append(args, "-n")
 	}
 	if pkgMgr != "" {
 		args = append(args, "--pkgmgr", pkgMgr)
+	}
+	if profile != "" {
+		args = append(args, "--profile", profile)
 	}
 	args = append(args, "-c", "export_wizard_catalog")
 	cmd := exec.Command(setupPath, args...)

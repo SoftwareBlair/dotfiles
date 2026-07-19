@@ -1,22 +1,16 @@
 #!/bin/bash
-# Your usual setup — single source of truth for the default stack
+# Stack selection helpers — package defaults come from profiles/<GitHubUser>.toml
 
-# Core tools you rely on every machine (Cursor is the default editor)
-MY_SETUP="sfmono_nerd starship eza warp cursor zed zsh nvm zsh_autosuggestions zsh_syntax_highlighting z"
-
-# macOS-only extras
-MY_SETUP_MACOS="raycast"
-
-# Optional extras when a recipe is available for this OS / pkgmgr
-MY_SETUP_OPTIONAL="vscode"
-
-# Help-screen groupings (keep in sync with MY_SETUP*)
-HELP_INCLUDES_EDITORS="Cursor (default), Zed · VS Code optional"
-HELP_INCLUDES_TERMINAL="Warp · SFMono · Starship · eza"
-HELP_INCLUDES_SHELL="zsh + plugins · NVM · Raycast (macOS)"
-
-PRESET_NAME="mine"
+PRESET_NAME=""
 PRESET_IDS=""
+
+# Fallback if a profile has not been loaded yet (tests / early help).
+MY_SETUP="${MY_SETUP:-}"
+MY_SETUP_MACOS="${MY_SETUP_MACOS:-}"
+MY_SETUP_OPTIONAL="${MY_SETUP_OPTIONAL:-}"
+HELP_INCLUDES_EDITORS="${HELP_INCLUDES_EDITORS:-Cursor, Zed}"
+HELP_INCLUDES_TERMINAL="${HELP_INCLUDES_TERMINAL:-Starship · eza}"
+HELP_INCLUDES_SHELL="${HELP_INCLUDES_SHELL:-zsh + plugins}"
 
 my_setup_ids() {
     local ids="$MY_SETUP"
@@ -32,9 +26,9 @@ my_setup_ids() {
     echo "$ids"
 }
 
-# Apply the full default stack (used by -y / non-interactive).
+# Apply the full default stack for the loaded profile (used by -y / non-interactive).
 apply_my_setup() {
-    PRESET_NAME="mine"
+    PRESET_NAME="${PROFILE_ID:-mine}"
     PRESET_IDS="$(my_setup_ids)"
     installer_clear_selections
     SELECTED_SHELL=""
@@ -53,7 +47,7 @@ apply_selection_ids() {
     local ids="$1"
     installer_clear_selections
     SELECTED_SHELL=""
-    PRESET_NAME="mine"
+    PRESET_NAME="${PROFILE_ID:-mine}"
     local id
     for id in $ids; do
         [[ -z "$id" ]] && continue
@@ -67,7 +61,7 @@ apply_selection_ids() {
     [[ ${#SELECTED_IDS[@]} -gt 0 ]]
 }
 
-# Interactive multi-select from the usual stack (defaults pre-selected).
+# Interactive multi-select from the profile stack (defaults pre-selected).
 # -y keeps the full default set without prompting.
 # SETUP_SELECTION_IDS (space-separated) applies a precomputed selection (TUI / tests).
 pick_my_setup() {
@@ -95,7 +89,11 @@ pick_my_setup() {
 
     echo ""
     prompt_style "Choose packages"
-    prompt_info "Defaults from your usual stack are pre-selected — add or remove as you like."
+    if [[ -n "${PROFILE_ID:-}" ]]; then
+        prompt_info "Defaults from @${PROFILE_ID} are pre-selected — add or remove as you like."
+    else
+        prompt_info "Defaults from the selected profile are pre-selected — add or remove as you like."
+    fi
 
     local picked=""
     picked="$(prompt_choose_many "Select packages to install" "${labels[@]}")"
@@ -107,7 +105,7 @@ pick_my_setup() {
 
     installer_clear_selections
     SELECTED_SHELL=""
-    PRESET_NAME="mine"
+    PRESET_NAME="${PROFILE_ID:-mine}"
 
     local label picked_id
     while IFS= read -r label; do
@@ -133,16 +131,23 @@ pick_my_setup() {
 
 print_my_setup_summary() {
     local id
+    if [[ -n "${PROFILE_ID:-}" ]]; then
+        echo "  Profile: ${PROFILE_NAME:-$PROFILE_ID} (@${PROFILE_ID})"
+    fi
     echo "  Selected packages:"
     for id in "${SELECTED_IDS[@]}"; do
         echo "    • $(catalog_get "$id" name)"
     done
-    local links=".zshrc .zshenv .config"
-    [[ " ${SYMLINK_TARGETS[*]:-} " == *" .warp "* ]] && links="$links .warp"
-    echo "    • symlink $links (as applicable)"
+    local links=""
+    local p
+    for p in "${SYMLINK_TARGETS[@]:-}"; do
+        links="$links $p"
+    done
+    links="${links# }"
+    [[ -n "$links" ]] && echo "    • symlink $links (as applicable)"
     if [[ " ${SELECTED_IDS[*]} " == *" starship "* ]] \
         || [[ " ${SELECTED_IDS[*]} " == *" zsh_autosuggestions "* ]] \
         || [[ " ${SELECTED_IDS[*]} " == *" zsh_syntax_highlighting "* ]]; then
-        echo "    • Starship / zsh plugins via this repo’s configs (when selected)"
+        echo "    • Starship / zsh plugins via profile configs (when selected)"
     fi
 }

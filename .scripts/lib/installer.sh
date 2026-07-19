@@ -149,9 +149,13 @@ installer_run_selections() {
             report_ok "$name" 2>/dev/null || true
 
             # Optional post symlink
-            local post_symlink
+            local post_symlink post_src
             post_symlink="$(catalog_get "$id" post_symlink)"
-            if [[ -n "$post_symlink" && -e "$DOTFILES_DIR/$post_symlink" ]]; then
+            post_src="$DOTFILES_DIR/$post_symlink"
+            if declare -f profile_config_source >/dev/null 2>&1; then
+                post_src="$(profile_config_source "$post_symlink")"
+            fi
+            if [[ -n "$post_symlink" && -e "$post_src" ]]; then
                 if declare -f install_dotfile_path >/dev/null 2>&1; then
                     install_dotfile_path "$post_symlink"
                 else
@@ -176,6 +180,9 @@ installer_run_selections() {
 symlink_dotfile_safe() {
     local rel="$1"
     local source="$DOTFILES_DIR/$rel"
+    if declare -f profile_config_source >/dev/null 2>&1; then
+        source="$(profile_config_source "$rel")"
+    fi
     local target="$HOME/$rel"
     local name="Symlink $rel"
 

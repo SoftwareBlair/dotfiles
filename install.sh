@@ -15,6 +15,7 @@
 #   DOTFILES_DRY_RUN=1  pass -n to setup
 #   DOTFILES_YES=1      pass -y to setup
 #   DOTFILES_PKGMGR     pass --pkgmgr <name>
+#   DOTFILES_PROFILE    pass --profile <GitHubUser> (e.g. SoftwareBlair)
 #   DOTFILES_SKIP_TUI=1 skip downloading the TUI binary
 set -uo pipefail
 
@@ -39,11 +40,13 @@ Options:
   -n, --dry-run      Plan only (pass -n to setup)
   -y, --yes          Non-interactive (full default stack)
   --bash             Force classic bash prompts (skip TUI)
+  --profile <user>   GitHub username profile (e.g. SoftwareBlair)
   --pkgmgr <name>    brew | apt | dnf | pacman
 
 Environment:
   DOTFILES_REPO, DOTFILES_REF, DOTFILES_DIR, DOTFILES_BASH,
-  DOTFILES_DRY_RUN, DOTFILES_YES, DOTFILES_PKGMGR, DOTFILES_SKIP_TUI
+  DOTFILES_DRY_RUN, DOTFILES_YES, DOTFILES_PKGMGR, DOTFILES_PROFILE,
+  DOTFILES_SKIP_TUI
 
 Recommended one-liner:
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
@@ -87,6 +90,11 @@ parse_args() {
             --bash)
                 DOTFILES_BASH=1
                 shift
+                ;;
+            --profile)
+                [[ $# -ge 2 ]] || die "--profile requires a value"
+                DOTFILES_PROFILE="$2"
+                shift 2
                 ;;
             --pkgmgr)
                 [[ $# -ge 2 ]] || die "--pkgmgr requires a value"
@@ -188,6 +196,7 @@ run_setup() {
     fi
     [[ -n "${DOTFILES_DRY_RUN:-}" ]] && args+=(-n)
     [[ -n "${DOTFILES_YES:-}" ]] && args+=(-y)
+    [[ -n "${DOTFILES_PROFILE:-}" ]] && args+=(--profile "$DOTFILES_PROFILE")
     [[ -n "${DOTFILES_PKGMGR:-}" ]] && args+=(--pkgmgr "$DOTFILES_PKGMGR")
 
     info "Starting setup: $setup ${args[*]}"
