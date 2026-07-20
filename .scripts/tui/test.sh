@@ -12,7 +12,7 @@ if ! command -v go >/dev/null 2>&1; then
 fi
 
 echo "Running Go tests in .scripts/tui…"
-go test ./...
+go test ./... || exit 1
 
 echo "Smoke: export_wizard_catalog JSON…"
 if ! ../setup.sh --pkgmgr apt --profile default -c export_wizard_catalog >/tmp/dotfiles-catalog.json; then

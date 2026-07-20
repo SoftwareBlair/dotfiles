@@ -213,7 +213,24 @@ func (s State) firstStep() Step {
 	if len(s.Snapshot.Profiles) > 1 {
 		return StepProfile
 	}
-	return StepShellPackages
+	// Profile already chosen (single / default) — packages come from the profile.
+	return StepConfirm
+}
+
+// stepAfterMigrateOrPkgMgr is the next step once pkgmgr/migrate are done.
+func (s State) stepAfterMigrateOrPkgMgr() Step {
+	if len(s.Snapshot.Profiles) > 1 {
+		return StepProfile
+	}
+	return StepConfirm
+}
+
+func (s *State) advanceToConfirmFromProfile() error {
+	if len(s.SelectedIDs()) == 0 {
+		return fmt.Errorf("profile has no packages available for this platform")
+	}
+	s.Step = StepConfirm
+	return nil
 }
 
 // FirstVisibleStep is the initial step for this snapshot (used by UI esc handling).
@@ -350,10 +367,11 @@ func (s *State) Next() error {
 			s.Step = StepPkgMgr
 		} else if s.Snapshot.MigrateNeeded {
 			s.Step = StepMigrate
-		} else if len(s.Snapshot.Profiles) > 1 {
-			s.Step = StepProfile
 		} else {
-			s.Step = StepShellPackages
+			s.Step = s.stepAfterMigrateOrPkgMgr()
+			if s.Step == StepConfirm {
+				return s.advanceToConfirmFromProfile()
+			}
 		}
 	case StepPkgMgr:
 		if len(s.Snapshot.PkgMgrOptions) > 0 {
@@ -361,11 +379,11 @@ func (s *State) Next() error {
 		}
 		if s.Snapshot.MigrateNeeded {
 			s.Step = StepMigrate
-		} else if len(s.Snapshot.Profiles) > 1 {
-			s.Step = StepProfile
 		} else {
-			s.Step = StepShellPackages
-			s.PackageCursor = 0
+			s.Step = s.stepAfterMigrateOrPkgMgr()
+			if s.Step == StepConfirm {
+				return s.advanceToConfirmFromProfile()
+			}
 		}
 	case StepMigrate:
 		switch s.MigrateIndex {
@@ -376,17 +394,15 @@ func (s *State) Next() error {
 		default:
 			s.MigrateAction = MigrateUpgrade
 		}
-		if len(s.Snapshot.Profiles) > 1 {
-			s.Step = StepProfile
-		} else {
-			s.Step = StepShellPackages
-			s.PackageCursor = 0
+		s.Step = s.stepAfterMigrateOrPkgMgr()
+		if s.Step == StepConfirm {
+			return s.advanceToConfirmFromProfile()
 		}
 	case StepProfile:
 		s.ApplyProfile(s.ProfileIndex)
-		s.Step = StepShellPackages
-		s.PackageCursor = 0
+		return s.advanceToConfirmFromProfile()
 	case StepShellPackages:
+		// Kept for tests / legacy; normal flow skips package pickers.
 		s.Step = StepDevPackages
 		s.PackageCursor = 0
 	case StepDevPackages:
@@ -436,8 +452,15 @@ func (s *State) Back() {
 		s.Step = StepShellPackages
 		s.PackageCursor = 0
 	case StepConfirm:
-		s.Step = StepDevPackages
-		s.PackageCursor = 0
+		if len(s.Snapshot.Profiles) > 1 {
+			s.Step = StepProfile
+		} else if s.Snapshot.MigrateNeeded {
+			s.Step = StepMigrate
+		} else if len(s.Snapshot.PkgMgrOptions) > 1 {
+			s.Step = StepPkgMgr
+		} else if s.needsPrereq() {
+			s.Step = StepPrereq
+		}
 	}
 }
 

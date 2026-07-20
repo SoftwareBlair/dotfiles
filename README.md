@@ -38,11 +38,10 @@ dotfiles-setup --dry-run
 
 1. Detects OS (macOS / Linux) and package manager options  
 2. Ensures `git` and `curl`  
-3. Lets you pick a **profile** (Default or a community setup) with a live preview  
-4. Select **shell** packages/modules, then **developer** apps  
-5. Confirms the plan (dry-run toggle) and installs + generates configs  
+3. Lets you pick a **profile** (Default or a community setup) with a live preview of its packages & themes  
+4. Confirms the plan (dry-run toggle) and installs + generates configs from that profile  
 
-Configs are written to `~/.zshrc`, `~/.zshenv`, `~/.config/starship.toml`, and `~/.dotfiles-setup/generated/` — only modules you selected.
+Configs are written to `~/.zshrc`, `~/.zshenv`, `~/.config/starship.toml`, and `~/.dotfiles-setup/generated/` — only modules in the profile.
 
 ## License
 

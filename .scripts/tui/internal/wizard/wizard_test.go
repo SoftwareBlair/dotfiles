@@ -64,32 +64,32 @@ func TestApplyBlairProfileLoadsDevAndAliases(t *testing.T) {
 	}
 }
 
-func TestShellThenDevThenConfirm(t *testing.T) {
+func TestProfileGoesStraightToConfirm(t *testing.T) {
 	st := wizard.New(loadNamed(t, "catalog_default_and_blair.json"), true)
-	st.Step = wizard.StepShellPackages
-	if err := st.Next(); err != nil {
-		t.Fatal(err)
-	}
-	if st.Step != wizard.StepDevPackages {
-		t.Fatalf("got %s", st.Step)
+	_ = st.Next() // pkgmgr → profile
+	if st.Step != wizard.StepProfile {
+		t.Fatalf("expected profile, got %s", st.Step)
 	}
 	if err := st.Next(); err != nil {
 		t.Fatal(err)
 	}
 	if st.Step != wizard.StepConfirm {
-		t.Fatalf("got %s", st.Step)
+		t.Fatalf("expected confirm after profile (no package pickers), got %s", st.Step)
+	}
+	if len(st.SelectedIDs()) == 0 {
+		t.Fatal("expected profile packages selected")
 	}
 }
 
-func TestEmptySelectionBlockedAtConfirmGate(t *testing.T) {
-	st := wizard.New(loadNamed(t, "catalog_default_and_blair.json"), true)
-	st.Step = wizard.StepDevPackages
-	st.ClearPackages()
+func TestEmptyProfileSelectionBlocked(t *testing.T) {
+	st := wizard.New(loadNamed(t, "catalog_needs_migrate.json"), false)
+	// Single-profile catalog: migrate → confirm (no package pickers).
+	st.Step = wizard.StepMigrate
 	for id := range st.Selected {
 		st.Selected[id] = false
 	}
 	if err := st.Next(); err == nil {
-		t.Fatal("expected error")
+		t.Fatal("expected error when profile has no selected packages")
 	}
 }
 
@@ -121,9 +121,11 @@ func TestMigrateAndPrereqFirstSteps(t *testing.T) {
 	if st.Step != wizard.StepMigrate {
 		t.Fatalf("expected migrate, got %s", st.Step)
 	}
-	_ = st.Next()
-	if st.Step != wizard.StepShellPackages {
-		t.Fatalf("expected shell (single profile), got %s", st.Step)
+	if err := st.Next(); err != nil {
+		t.Fatal(err)
+	}
+	if st.Step != wizard.StepConfirm {
+		t.Fatalf("expected confirm (single profile, no package pickers), got %s", st.Step)
 	}
 }
 
@@ -141,15 +143,11 @@ func TestProfilePreviewContainsPackages(t *testing.T) {
 	}
 }
 
-func TestBackNavigation(t *testing.T) {
+func TestBackFromConfirmToProfile(t *testing.T) {
 	st := wizard.New(loadNamed(t, "catalog_default_and_blair.json"), true)
 	st.Step = wizard.StepConfirm
 	st.Back()
-	if st.Step != wizard.StepDevPackages {
-		t.Fatalf("got %s", st.Step)
-	}
-	st.Back()
-	if st.Step != wizard.StepShellPackages {
-		t.Fatalf("got %s", st.Step)
+	if st.Step != wizard.StepProfile {
+		t.Fatalf("expected profile (multi-profile catalog), got %s", st.Step)
 	}
 }

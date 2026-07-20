@@ -24,4 +24,4 @@ go build -o ../bin/dotfiles-setup .
 go test ./...
 ```
 
-See [docs/contributing.md](../../docs/contributing.md) for expected coverage (wizard steps, profile preview, shell/dev split, dry-run, migrate, engine argv).
+See [docs/contributing.md](../../docs/contributing.md) for expected coverage (wizard steps, profile preview → confirm, dry-run, migrate, engine argv).

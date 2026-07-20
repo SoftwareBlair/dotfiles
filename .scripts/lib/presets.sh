@@ -59,67 +59,17 @@ apply_selection_ids() {
 }
 
 pick_my_setup() {
+    # Profiles own the package set — no interactive package/module picker.
     if [[ -n "${SETUP_SELECTION_IDS:-}" ]]; then
         apply_selection_ids "$SETUP_SELECTION_IDS"
         return $?
     fi
 
-    if [[ -n "${YES_MODE:-}" ]]; then
-        apply_my_setup
-        return 0
-    fi
-
-    local labels=()
-    local id
-    for id in $(my_setup_ids); do
-        catalog_available "$id" || continue
-        labels+=("$(catalog_label "$id")")
-    done
-
-    if [[ ${#labels[@]} -eq 0 ]]; then
-        prompt_error "No packages available for ${PKG_MGR:-?} on ${PLATFORM:-?}."
-        return 1
-    fi
-
-    echo ""
-    prompt_style "Choose packages & modules"
-    if [[ -n "${PROFILE_ID:-}" ]]; then
-        prompt_info "Defaults from @${PROFILE_ID} are pre-selected — add or remove as you like."
-    else
-        prompt_info "Defaults from the selected profile are pre-selected."
-    fi
-
-    local picked=""
-    picked="$(prompt_choose_many "Select packages to install / modules to generate" "${labels[@]}")"
-
-    if [[ -z "$(echo "$picked" | sed '/^$/d')" ]]; then
-        prompt_warn "Nothing selected — cancelled."
-        return 1
-    fi
-
-    installer_clear_selections
-    SELECTED_SHELL=""
-    PRESET_NAME="${PROFILE_ID:-default}"
-
-    local label picked_id
-    while IFS= read -r label; do
-        [[ -z "$label" ]] && continue
-        picked_id="$(catalog_id_from_label "$label")" || {
-            prompt_warn "Could not resolve selection: $label"
-            continue
-        }
-        installer_add_selection "$picked_id"
-        if [[ "$(catalog_get "$picked_id" category)" == "shells" ]]; then
-            SELECTED_SHELL="$picked_id"
-        fi
-    done <<< "$picked"
-
+    apply_my_setup
     if [[ ${#SELECTED_IDS[@]} -eq 0 ]]; then
-        prompt_warn "Nothing selected — cancelled."
+        prompt_error "Profile @${PROFILE_ID:-?} has no packages available for ${PKG_MGR:-?} on ${PLATFORM:-?}."
         return 1
     fi
-
-    PRESET_IDS="${SELECTED_IDS[*]}"
     return 0
 }
 

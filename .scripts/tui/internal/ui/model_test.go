@@ -41,7 +41,8 @@ func TestProfilePreviewInView(t *testing.T) {
 	}
 }
 
-func TestShellThenDevViews(t *testing.T) {
+func TestShellThenDevViewsStillRender(t *testing.T) {
+	// Package pickers are skipped in the normal flow; views remain for completeness.
 	st := wizard.New(fixture(t), true)
 	st.ApplyProfile(0) // default
 	st.Step = wizard.StepShellPackages
@@ -58,6 +59,21 @@ func TestShellThenDevViews(t *testing.T) {
 	view = m.View()
 	if !strings.Contains(view, "Developer applications") {
 		t.Fatalf("dev view:\n%s", view)
+	}
+}
+
+func TestProfileEnterGoesToConfirm(t *testing.T) {
+	st := wizard.New(fixture(t), true)
+	st.Step = wizard.StepProfile
+	m := ui.NewModel(st, engine.Runner{})
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = m2.(ui.Model)
+	if m.State.Step != wizard.StepConfirm {
+		t.Fatalf("expected confirm after profile, got %s", m.State.Step)
+	}
+	view := m.View()
+	if !strings.Contains(view, "DRY RUN") && !strings.Contains(view, "INSTALL") {
+		t.Fatalf("confirm view:\n%s", view)
 	}
 }
 

@@ -4,11 +4,13 @@ Profiles are declarative TOML files under [`profiles/`](../profiles/). They defi
 
 ## Built-in: `default`
 
-Fresh install path. Minimal shell defaults (`zsh`, `starship`) and the **stock** Starship theme. You add packages in the wizard.
+Fresh install path. Minimal shell defaults (`zsh`, `starship`) and the **stock** Starship theme.
 
 ## Community profiles
 
 Named after a GitHub username, e.g. [`SoftwareBlair.toml`](../profiles/SoftwareBlair.toml). The filename must match `github = "…"`.
+
+Choosing a profile **is** choosing its package set — the wizard does not ask you to pick packages again.
 
 Example fields:
 

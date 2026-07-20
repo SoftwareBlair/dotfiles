@@ -15,19 +15,16 @@ dotfiles-setup
 2. **Package manager** — brew / apt / dnf / pacman  
 3. **Migrate** (if needed) — upgrade prior setup, adopt unmanaged configs, or skip  
 4. **Profile** — Default (fresh) or a community profile; preview shows packages & themes  
-5. **Shell environment** — zsh modules/tools (only selected modules are generated)  
-6. **Developer apps** — editors, terminals, fonts  
-7. **Confirm** — review plan; press `n` to toggle **dry-run**  
-8. **Run** — install packages + generate configs  
+5. **Confirm** — review the profile’s packages; press `n` to toggle **dry-run**  
+6. **Run** — install packages + generate configs  
 
-Require at least one selected package/module before confirm.
+Choosing a profile selects its packages and modules — there is no separate package picker.
 
 ### Keys
 
 | Screen | Keys |
 |--------|------|
 | Lists | ↑/↓, enter |
-| Packages | space toggle, `a` all, `d` defaults, `c` clear |
 | Confirm | enter run, `n` dry-run toggle, esc back |
 | Anywhere | `q` quit |
 
@@ -36,7 +33,7 @@ Require at least one selected package/module before confirm.
 | Path | Role |
 |------|------|
 | `~/.zshrc` / `~/.zshenv` | Orchestrators (regenerated) |
-| `~/.dotfiles-setup/generated/*.zsh` | Selected modules only |
+| `~/.dotfiles-setup/generated/*.zsh` | Modules from the chosen profile |
 | `~/.config/starship.toml` | Theme from profile (if starship selected) |
 | `~/.dotfiles-setup/shell-features.zsh` | Feature flags (`DOTFILES_SETUP_SCHEMA=2`) |
 | `~/.zshrc.local` | **Your** overrides — never overwritten |
