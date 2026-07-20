@@ -1,0 +1,84 @@
+{
+  "active_profile": "default",
+  "dotfiles_dir": "/home/user/dotfiles",
+  "dry_run": false,
+  "migrate_needed": true,
+  "missing_curl": false,
+  "missing_git": true,
+  "packages": [
+    {
+      "category": "shells",
+      "default": true,
+      "description": "Z shell",
+      "generate_only": false,
+      "group": "shell",
+      "id": "zsh",
+      "name": "zsh"
+    },
+    {
+      "category": "shell-configs",
+      "default": true,
+      "description": "Prompt",
+      "generate_only": false,
+      "group": "shell",
+      "id": "starship",
+      "name": "Starship"
+    },
+    {
+      "category": "dev-tools",
+      "default": false,
+      "description": "Editor",
+      "generate_only": false,
+      "group": "dev",
+      "id": "cursor",
+      "name": "Cursor"
+    }
+  ],
+  "pkgmgr": "brew",
+  "pkgmgr_options": [
+    { "default": true, "id": "brew", "label": "Homebrew (brew)" }
+  ],
+  "platform": "linux",
+  "platform_label": "Linux · ubuntu · amd64",
+  "profile_description": "Clean setup",
+  "profile_name": "Default",
+  "profiles": [
+    {
+      "default": true,
+      "description": "Clean setup",
+      "id": "default",
+      "name": "Default",
+      "theme_starship": "stock",
+      "packages": [
+        {
+          "category": "shells",
+          "default": true,
+          "generate_only": false,
+          "group": "shell",
+          "id": "zsh",
+          "name": "zsh",
+          "description": ""
+        },
+        {
+          "category": "shell-configs",
+          "default": true,
+          "generate_only": false,
+          "group": "shell",
+          "id": "starship",
+          "name": "Starship",
+          "description": ""
+        },
+        {
+          "category": "dev-tools",
+          "default": false,
+          "generate_only": false,
+          "group": "dev",
+          "id": "cursor",
+          "name": "Cursor",
+          "description": ""
+        }
+      ]
+    }
+  ],
+  "theme_starship": "stock"
+}

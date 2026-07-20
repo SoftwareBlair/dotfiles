@@ -17,7 +17,7 @@ import (
 func fixture(t *testing.T) catalog.Snapshot {
 	t.Helper()
 	_, file, _, _ := runtime.Caller(0)
-	path := filepath.Join(filepath.Dir(file), "..", "..", "testdata", "catalog_linux_apt.json")
+	path := filepath.Join(filepath.Dir(file), "..", "..", "testdata", "catalog_default_and_blair.json")
 	snap, err := catalog.LoadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -25,77 +25,69 @@ func fixture(t *testing.T) catalog.Snapshot {
 	return snap
 }
 
-func key(s string) tea.KeyMsg {
-	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
-}
-
-func TestViewShowsPackageListAfterPkgMgr(t *testing.T) {
+func TestProfilePreviewInView(t *testing.T) {
 	st := wizard.New(fixture(t), true)
-	m := ui.NewModel(st, engine.Runner{})
-
-	// select apt (index 1) and continue
-	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyDown})
-	m = m2.(ui.Model)
-	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = m2.(ui.Model)
-
-	if m.State.Step != wizard.StepPackages {
-		t.Fatalf("expected packages step, got %s", m.State.Step)
-	}
-	view := m.View()
-	for _, name := range []string{"SFMono Nerd Font", "Starship", "Cursor", "VS Code"} {
-		if !strings.Contains(view, name) {
-			t.Fatalf("view missing %q\n%s", name, view)
+	st.Step = wizard.StepProfile
+	for i, p := range st.Snapshot.Profiles {
+		if p.ID == "SoftwareBlair" {
+			st.ProfileIndex = i
+			break
 		}
 	}
-	if !strings.Contains(view, "[x]") {
-		t.Fatalf("expected selected markers in view\n%s", view)
+	m := ui.NewModel(st, engine.Runner{})
+	view := m.View()
+	if !strings.Contains(view, "Blair") || !strings.Contains(view, "Cursor") {
+		t.Fatalf("view missing preview:\n%s", view)
 	}
 }
 
-func TestSpaceTogglesSelectionInView(t *testing.T) {
+func TestShellThenDevViews(t *testing.T) {
 	st := wizard.New(fixture(t), true)
-	st.Step = wizard.StepPackages
-	st.PackageCursor = 0
+	st.ApplyProfile(0) // default
+	st.Step = wizard.StepShellPackages
 	m := ui.NewModel(st, engine.Runner{})
-
-	before := m.State.Selected["sfmono_nerd"]
-	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeySpace})
-	m = m2.(ui.Model)
-	if m.State.Selected["sfmono_nerd"] == before {
-		t.Fatal("space should toggle selection")
+	view := m.View()
+	if !strings.Contains(view, "Shell environment") || !strings.Contains(view, "Starship") {
+		t.Fatalf("shell view:\n%s", view)
 	}
-}
-
-func TestConfirmSummaryOutput(t *testing.T) {
-	st := wizard.New(fixture(t), true)
-	st.Step = wizard.StepPackages
-	st.PkgMgr = "apt"
-	st.ClearPackages()
-	st.Selected["cursor"] = true
-	m := ui.NewModel(st, engine.Runner{})
-
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = m2.(ui.Model)
-	if m.State.Step != wizard.StepConfirm {
+	if m.State.Step != wizard.StepDevPackages {
 		t.Fatalf("got %s", m.State.Step)
 	}
+	view = m.View()
+	if !strings.Contains(view, "Developer applications") {
+		t.Fatalf("dev view:\n%s", view)
+	}
+}
+
+func TestSpaceTogglesSelection(t *testing.T) {
+	st := wizard.New(fixture(t), true)
+	st.Step = wizard.StepShellPackages
+	st.PackageCursor = 0
+	m := ui.NewModel(st, engine.Runner{})
+	before := m.State.Selected["zsh"]
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeySpace})
+	m = m2.(ui.Model)
+	if m.State.Selected["zsh"] == before {
+		t.Fatal("space should toggle")
+	}
+}
+
+func TestConfirmShowsDryRun(t *testing.T) {
+	st := wizard.New(fixture(t), true)
+	st.Step = wizard.StepConfirm
+	m := ui.NewModel(st, engine.Runner{})
 	view := m.View()
-	if !strings.Contains(view, "Package manager: apt") {
-		t.Fatalf("missing pkgmgr in confirm view\n%s", view)
-	}
-	if !strings.Contains(view, "Cursor") {
-		t.Fatalf("missing Cursor in confirm view\n%s", view)
-	}
 	if !strings.Contains(view, "DRY RUN") {
-		t.Fatalf("missing DRY RUN in confirm view\n%s", view)
+		t.Fatalf("missing DRY RUN:\n%s", view)
 	}
 }
 
 func TestQuitCancels(t *testing.T) {
 	st := wizard.New(fixture(t), true)
 	m := ui.NewModel(st, engine.Runner{})
-	m2, cmd := m.Update(key("q"))
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	m = m2.(ui.Model)
 	if m.State.Step != wizard.StepCancelled {
 		t.Fatalf("expected cancelled, got %s", m.State.Step)

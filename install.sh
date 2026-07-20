@@ -30,7 +30,7 @@ die()   { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 usage() {
     cat <<'EOF'
-Bootstrap SoftwareBlair/dotfiles onto this machine.
+Install the dotfiles-setup CLI and run the new-machine wizard.
 
 Usage:
   install.sh [options]
@@ -38,15 +38,19 @@ Usage:
 Options:
   -h, --help         Show this help and exit
   -n, --dry-run      Plan only (pass -n to setup)
-  -y, --yes          Non-interactive (full default stack)
+  -y, --yes          Non-interactive (profile defaults)
   --bash             Force classic bash prompts (skip TUI)
-  --profile <user>   GitHub username profile (e.g. SoftwareBlair)
+  --profile <id>     Profile id (default | SoftwareBlair | …)
   --pkgmgr <name>    brew | apt | dnf | pacman
 
 Environment:
   DOTFILES_REPO, DOTFILES_REF, DOTFILES_DIR, DOTFILES_BASH,
   DOTFILES_DRY_RUN, DOTFILES_YES, DOTFILES_PKGMGR, DOTFILES_PROFILE,
   DOTFILES_SKIP_TUI
+
+Also available via Homebrew (see docs/install.md):
+  brew tap SoftwareBlair/dotfiles
+  brew install dotfiles-setup
 
 Recommended one-liner:
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
@@ -156,24 +160,28 @@ ensure_repo() {
     rm -rf "$tmp"
 }
 
-# Download prebuilt TUI from GitHub Releases into .scripts/bin/
+# Download prebuilt TUI from GitHub Releases into .scripts/bin/ and ~/.local/bin/
 maybe_download_tui() {
     [[ -n "${DOTFILES_SKIP_TUI:-}" || -n "${DOTFILES_BASH:-}" ]] && return 0
 
     need_cmd curl
-    local target asset url dest_dir dest
+    local target asset url dest_dir dest path_bin
     target="$(detect_target)"
     asset="dotfiles-setup-${target}"
     dest_dir="${DEST}/.scripts/bin"
     dest="${dest_dir}/dotfiles-setup"
-    mkdir -p "$dest_dir"
+    path_bin="${HOME}/.local/bin/dotfiles-setup"
+    mkdir -p "$dest_dir" "${HOME}/.local/bin"
 
     url="https://github.com/${RELEASE_REPO}/releases/latest/download/${asset}"
     info "Fetching TUI binary (${asset})"
     if curl -fsSL "$url" -o "${dest}.tmp"; then
         mv "${dest}.tmp" "$dest"
         chmod +x "$dest"
+        cp "$dest" "$path_bin"
+        chmod +x "$path_bin"
         info "TUI ready → $dest"
+        info "Also installed → $path_bin (ensure ~/.local/bin is on PATH)"
         return 0
     fi
 

@@ -30,6 +30,10 @@ source "$SCRIPTS_DIR/lib/presets.sh"
 # shellcheck disable=SC1091
 source "$SCRIPTS_DIR/lib/configure.sh"
 # shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/generate.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/migrate.sh"
+# shellcheck disable=SC1091
 source "$SCRIPTS_DIR/lib/wizard-export.sh"
 
 DRY_RUN=""
@@ -71,15 +75,15 @@ usage() {
     echo -e "    ${g}./setup.sh -c${o} ${d}<helper>${o}       export_wizard_catalog · move_dotfiles · …"
     echo ""
     echo -e "  ${w}Defaults${o}"
-    echo -e "    ${d}profile${o}   ${DEFAULT_PROFILE:-SoftwareBlair} (see profiles/*.toml)"
+    echo -e "    ${d}profile${o}   ${DEFAULT_PROFILE:-default} (see profiles/*.toml)"
     echo -e "    ${d}pkgmgr${o}    Homebrew (system manager on Linux if brew missing)"
-    echo -e "    ${d}dotfiles${o}  Symlink (repo can live anywhere)"
+    echo -e "    ${d}configs${o}   Generated into \$HOME (modular zsh + themes)"
     echo -e "    ${d}updates${o}   Offer upgrade when already installed"
     echo ""
     echo -e "  ${w}More${o}"
     echo -e "    ${d}profiles${o}  profiles/<GitHubUser>.toml — contribute your setup"
+    echo -e "    ${d}docs${o}      docs/ · README.md"
     echo -e "    ${d}state${o}     ~/.dotfiles-setup/"
-    echo -e "    ${d}docs${o}      README.md · profiles/README.md"
     echo ""
 }
 
@@ -172,21 +176,55 @@ pick_pkgmgr() {
     esac
 }
 
+# Ensure git + curl exist (offer install via PKG_MGR)
+ensure_core_prereqs() {
+    local missing=()
+    command -v git >/dev/null 2>&1 || missing+=("git")
+    command -v curl >/dev/null 2>&1 || missing+=("curl")
+    [[ ${#missing[@]} -eq 0 ]] && return 0
+
+    prompt_warn "Missing required tools: ${missing[*]}"
+    local install=false
+    if [[ -n "${YES_MODE:-}" ]]; then
+        install=true
+    elif prompt_confirm "Install missing tools via ${PKG_MGR:-brew}?" "true"; then
+        install=true
+    fi
+    if [[ "$install" != "true" ]]; then
+        prompt_error "git and curl are required. Aborting."
+        return 1
+    fi
+
+    local pkg cmd
+    for pkg in "${missing[@]}"; do
+        case "${PKG_MGR:-brew}" in
+            brew) cmd="brew install $pkg" ;;
+            apt) cmd="sudo apt-get install -y $pkg" ;;
+            dnf) cmd="sudo dnf install -y $pkg" ;;
+            pacman) cmd="sudo pacman -S --noconfirm $pkg" ;;
+            *) cmd="brew install $pkg" ;;
+        esac
+        if dry_run_is_active; then
+            dry_run_add_step "Install $pkg" "$cmd" "" "" "false" ""
+            continue
+        fi
+        prompt_style "Installing $pkg..."
+        bash -c "$cmd" || {
+            prompt_error "Failed to install $pkg"
+            return 1
+        }
+    done
+    return 0
+}
+
 run_setup() {
     state_init
     load_setup_prefs
     ensure_gum
 
     prompt_welcome "New machine setup" "$(platform_label)"
-    prompt_info "Dotfiles: $DOTFILES_DIR"
-    dry_run_is_active && prompt_info "Dry-run: same prompts as a real run; nothing will be installed or linked."
-
-    if [[ "$DOTFILES_DIR" != "$HOME/dotfiles" && -z "${YES_MODE:-}" ]]; then
-        if prompt_confirm "Move repo to ~/dotfiles? (optional — works from any path)" "false"; then
-            move_dotfiles
-            # move_dotfiles updates DOTFILES_DIR on a real move; dry-run only records the step
-        fi
-    fi
+    prompt_info "Tool root: $DOTFILES_DIR"
+    dry_run_is_active && prompt_info "Dry-run: same prompts as a real run; nothing will be installed or written."
 
     local count
     count="$(state_log_count)"
@@ -202,13 +240,6 @@ run_setup() {
         esac
     fi
 
-    if ! pick_profile; then
-        exit 1
-    fi
-    if [[ -n "${PROFILE_DESCRIPTION:-}" ]]; then
-        prompt_info "Stack: $PROFILE_DESCRIPTION"
-    fi
-
     pick_pkgmgr
     prompt_info "Package manager: $PKG_MGR"
 
@@ -217,21 +248,44 @@ run_setup() {
     fi
 
     ensure_pkgmgr "$PKG_MGR"
+    ensure_core_prereqs || exit 1
+
+    pick_migrate
+    migrate_apply
+
+    if ! pick_profile; then
+        exit 1
+    fi
+    if [[ -n "${PROFILE_DESCRIPTION:-}" ]]; then
+        prompt_info "Profile: $PROFILE_DESCRIPTION"
+    fi
+
+    # Themes from env (TUI) override profile
+    if [[ -n "${SETUP_THEMES:-}" ]]; then
+        # format: starship=blair
+        local pair
+        for pair in $SETUP_THEMES; do
+            case "$pair" in
+                starship=*) THEME_STARSHIP="${pair#starship=}" ;;
+            esac
+        done
+    fi
 
     if ! pick_my_setup; then
         exit 1
     fi
-    profile_apply_symlinks
 
     echo ""
     print_my_setup_summary
     echo "  Package manager: $PKG_MGR"
-    echo "  Link mode: symlink"
+    echo "  Configs: generate into \$HOME"
+    echo "  Starship theme: ${THEME_STARSHIP:-stock}"
+    [[ -n "${MIGRATE_ACTION:-}" && "$MIGRATE_ACTION" != "none" ]] && echo "  Migrate: $MIGRATE_ACTION"
     dry_run_is_active && echo "  Mode: DRY RUN"
 
     if [[ -z "${YES_MODE:-}" ]]; then
-        local confirm_msg="Install the selected packages now?"
-        dry_run_is_active && confirm_msg="Continue dry-run with the selected packages?"
+        local confirm_msg="Install packages and generate configs now?"
+        dry_run_is_active && confirm_msg="Continue dry-run with this plan?"
         if ! prompt_confirm "$confirm_msg" "true"; then
             if dry_run_is_active; then
                 prompt_warn "Cancelled."
@@ -258,15 +312,9 @@ run_setup() {
     INSTALL_REPORT_FAIL=()
     INSTALL_REPORT_CONFIG=()
 
-    # Same user flow for install and dry-run; dry-run helpers record steps instead of changing the system
     install_prerequisites
     installer_run_selections
-    local p
-    for p in "${SYMLINK_TARGETS[@]}"; do
-        install_dotfile_path "$p"
-    done
-    write_shell_features
-    configure_starship
+    generate_configs
     offer_secrets_zprofile
     if [[ -n "${SELECTED_SHELL:-}" ]]; then
         maybe_chsh "$SELECTED_SHELL"

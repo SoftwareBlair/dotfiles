@@ -11,9 +11,12 @@ import (
 type Step int
 
 const (
-	StepProfile Step = iota
+	StepPrereq Step = iota
 	StepPkgMgr
-	StepPackages
+	StepMigrate
+	StepProfile
+	StepShellPackages
+	StepDevPackages
 	StepConfirm
 	StepRunning
 	StepDone
@@ -22,12 +25,18 @@ const (
 
 func (s Step) String() string {
 	switch s {
-	case StepProfile:
-		return "profile"
+	case StepPrereq:
+		return "prereq"
 	case StepPkgMgr:
 		return "pkgmgr"
-	case StepPackages:
-		return "packages"
+	case StepMigrate:
+		return "migrate"
+	case StepProfile:
+		return "profile"
+	case StepShellPackages:
+		return "shell"
+	case StepDevPackages:
+		return "dev"
 	case StepConfirm:
 		return "confirm"
 	case StepRunning:
@@ -41,25 +50,44 @@ func (s Step) String() string {
 	}
 }
 
+// MigrateAction is the user's migration choice.
+type MigrateAction string
+
+const (
+	MigrateNone    MigrateAction = "none"
+	MigrateUpgrade MigrateAction = "upgrade"
+	MigrateAdopt   MigrateAction = "adopt"
+	MigrateSkip    MigrateAction = "skip"
+)
+
 // State is the pure wizard state machine (no Bubble Tea dependency).
 type State struct {
 	Snapshot catalog.Snapshot
 
 	Step Step
 
-	ProfileIndex int
-	ProfileID    string
+	PrereqInstall bool // user chose to install missing git/curl
+	PrereqIndex   int
 
 	PkgMgrIndex int
 	PkgMgr      string
 
-	// Cursor / selection on the packages screen
+	MigrateIndex  int
+	MigrateAction MigrateAction
+
+	ProfileIndex int
+	ProfileID    string
+	ThemeStarship string
+
 	PackageCursor int
 	Selected      map[string]bool
 
+	// Which list the cursor applies to
+	ShellPackages []catalog.Package
+	DevPackages   []catalog.Package
+
 	DryRun bool
 
-	// Status after run
 	RunOutput string
 	RunErr    string
 }
@@ -68,10 +96,17 @@ type State struct {
 func New(snap catalog.Snapshot, dryRun bool) State {
 	profileIndex := 0
 	profileID := snap.ActiveProfile
+	theme := snap.ThemeStarship
+	if theme == "" {
+		theme = "stock"
+	}
 	for i, p := range snap.Profiles {
 		if p.Default || p.ID == snap.ActiveProfile {
 			profileIndex = i
 			profileID = p.ID
+			if p.ThemeStarship != "" {
+				theme = p.ThemeStarship
+			}
 			break
 		}
 	}
@@ -80,7 +115,6 @@ func New(snap catalog.Snapshot, dryRun bool) State {
 		profileIndex = 0
 	}
 
-	// Prefer embedded profile packages when available
 	packages := snap.Packages
 	for _, p := range snap.Profiles {
 		if p.ID == profileID && len(p.Packages) > 0 {
@@ -89,6 +123,10 @@ func New(snap catalog.Snapshot, dryRun bool) State {
 			snap.ActiveProfile = profileID
 			snap.ProfileName = p.Name
 			snap.ProfileDescription = p.Description
+			if p.ThemeStarship != "" {
+				theme = p.ThemeStarship
+				snap.ThemeStarship = theme
+			}
 			break
 		}
 	}
@@ -124,30 +162,74 @@ func New(snap catalog.Snapshot, dryRun bool) State {
 		pkgMgr = snap.PkgMgrOptions[pkgMgrIndex].ID
 	}
 
-	start := StepPackages
-	if len(snap.Profiles) > 1 {
-		start = StepProfile
-	} else if len(snap.PkgMgrOptions) > 1 {
-		start = StepPkgMgr
-	}
-
-	return State{
+	st := State{
 		Snapshot:      snap,
-		Step:          start,
-		ProfileIndex:  profileIndex,
-		ProfileID:     profileID,
+		PrereqInstall: true,
 		PkgMgrIndex:   pkgMgrIndex,
 		PkgMgr:        pkgMgr,
-		PackageCursor: 0,
+		MigrateAction: MigrateUpgrade,
+		ProfileIndex:  profileIndex,
+		ProfileID:     profileID,
+		ThemeStarship: theme,
 		Selected:      selected,
 		DryRun:        dryRun || snap.DryRun,
 	}
+	st.refreshPackageLists()
+	st.Step = st.firstStep()
+	return st
 }
 
-// SelectedIDs returns selected package IDs in catalog order.
+func (s *State) refreshPackageLists() {
+	s.ShellPackages = nil
+	s.DevPackages = nil
+	for _, p := range s.Snapshot.Packages {
+		switch {
+		case p.Group == "shell":
+			s.ShellPackages = append(s.ShellPackages, p)
+		case p.Group == "dev":
+			s.DevPackages = append(s.DevPackages, p)
+		case p.Category == "shells" || p.Category == "shell-configs":
+			s.ShellPackages = append(s.ShellPackages, p)
+		default:
+			s.DevPackages = append(s.DevPackages, p)
+		}
+	}
+}
+
+func (s State) needsPrereq() bool {
+	return s.Snapshot.MissingGit || s.Snapshot.MissingCurl
+}
+
+func (s State) firstStep() Step {
+	if s.needsPrereq() {
+		return StepPrereq
+	}
+	if len(s.Snapshot.PkgMgrOptions) > 1 {
+		return StepPkgMgr
+	}
+	if s.Snapshot.MigrateNeeded {
+		return StepMigrate
+	}
+	if len(s.Snapshot.Profiles) > 1 {
+		return StepProfile
+	}
+	return StepShellPackages
+}
+
+// FirstVisibleStep is the initial step for this snapshot (used by UI esc handling).
+func (s State) FirstVisibleStep() Step {
+	return s.firstStep()
+}
+
+// SelectedIDs returns all selected package IDs (shell then dev order).
 func (s State) SelectedIDs() []string {
 	ids := make([]string, 0, len(s.Selected))
-	for _, p := range s.Snapshot.Packages {
+	for _, p := range s.ShellPackages {
+		if s.Selected[p.ID] {
+			ids = append(ids, p.ID)
+		}
+	}
+	for _, p := range s.DevPackages {
 		if s.Selected[p.ID] {
 			ids = append(ids, p.ID)
 		}
@@ -155,20 +237,15 @@ func (s State) SelectedIDs() []string {
 	return ids
 }
 
-// SelectedNames returns display names for the confirm screen.
-func (s State) SelectedNames() []string {
-	names := make([]string, 0, len(s.Selected))
-	for _, p := range s.Snapshot.Packages {
-		if s.Selected[p.ID] {
-			names = append(names, p.Name)
-		}
+func (s State) currentList() []catalog.Package {
+	switch s.Step {
+	case StepShellPackages:
+		return s.ShellPackages
+	case StepDevPackages:
+		return s.DevPackages
+	default:
+		return s.Snapshot.Packages
 	}
-	return names
-}
-
-// SelectionCSV is a space-separated ID list for SETUP_SELECTION_IDS.
-func (s State) SelectionCSV() string {
-	return strings.Join(s.SelectedIDs(), " ")
 }
 
 // ApplyProfile switches the active profile and resets package defaults.
@@ -182,9 +259,14 @@ func (s *State) ApplyProfile(index int) {
 	s.Snapshot.ActiveProfile = p.ID
 	s.Snapshot.ProfileName = p.Name
 	s.Snapshot.ProfileDescription = p.Description
+	if p.ThemeStarship != "" {
+		s.ThemeStarship = p.ThemeStarship
+		s.Snapshot.ThemeStarship = p.ThemeStarship
+	}
 	if len(p.Packages) > 0 {
 		s.Snapshot.Packages = p.Packages
 	}
+	s.refreshPackageLists()
 	s.PackageCursor = 0
 	s.Selected = make(map[string]bool)
 	for _, pkg := range s.Snapshot.Packages {
@@ -194,25 +276,26 @@ func (s *State) ApplyProfile(index int) {
 	}
 }
 
-// TogglePackage toggles selection at the current cursor.
 func (s *State) TogglePackage() {
-	if s.Step != StepPackages || len(s.Snapshot.Packages) == 0 {
+	list := s.currentList()
+	if len(list) == 0 {
 		return
 	}
-	id := s.Snapshot.Packages[s.PackageCursor].ID
+	if s.PackageCursor < 0 || s.PackageCursor >= len(list) {
+		return
+	}
+	id := list[s.PackageCursor].ID
 	s.Selected[id] = !s.Selected[id]
 }
 
-// MovePackageCursor moves the highlight on the packages list.
 func (s *State) MovePackageCursor(delta int) {
-	n := len(s.Snapshot.Packages)
+	n := len(s.currentList())
 	if n == 0 {
 		return
 	}
 	s.PackageCursor = (s.PackageCursor + delta%n + n) % n
 }
 
-// MovePkgMgr moves the package-manager cursor.
 func (s *State) MovePkgMgr(delta int) {
 	n := len(s.Snapshot.PkgMgrOptions)
 	if n == 0 {
@@ -222,7 +305,6 @@ func (s *State) MovePkgMgr(delta int) {
 	s.PkgMgr = s.Snapshot.PkgMgrOptions[s.PkgMgrIndex].ID
 }
 
-// MoveProfile moves the profile cursor.
 func (s *State) MoveProfile(delta int) {
 	n := len(s.Snapshot.Profiles)
 	if n == 0 {
@@ -231,45 +313,85 @@ func (s *State) MoveProfile(delta int) {
 	s.ProfileIndex = (s.ProfileIndex + delta%n + n) % n
 }
 
-// SelectAllPackages marks every package selected.
+func (s *State) MoveMigrate(delta int) {
+	s.MigrateIndex = (s.MigrateIndex + delta%3 + 3) % 3
+}
+
+func (s *State) MovePrereq(delta int) {
+	s.PrereqIndex = (s.PrereqIndex + delta%2 + 2) % 2
+}
+
 func (s *State) SelectAllPackages() {
-	for _, p := range s.Snapshot.Packages {
+	for _, p := range s.currentList() {
 		s.Selected[p.ID] = true
 	}
 }
 
-// SelectDefaultPackages restores profile defaults.
 func (s *State) SelectDefaultPackages() {
-	for _, p := range s.Snapshot.Packages {
+	for _, p := range s.currentList() {
 		s.Selected[p.ID] = p.Default
 	}
 }
 
-// ClearPackages deselects everything.
 func (s *State) ClearPackages() {
-	for _, p := range s.Snapshot.Packages {
+	for _, p := range s.currentList() {
 		s.Selected[p.ID] = false
 	}
 }
 
-// Next advances to the next step when valid.
 func (s *State) Next() error {
 	switch s.Step {
-	case StepProfile:
-		s.ApplyProfile(s.ProfileIndex)
+	case StepPrereq:
+		s.PrereqInstall = s.PrereqIndex == 0
+		if !s.PrereqInstall && s.needsPrereq() {
+			return fmt.Errorf("git and curl are required")
+		}
 		if len(s.Snapshot.PkgMgrOptions) > 1 {
 			s.Step = StepPkgMgr
+		} else if s.Snapshot.MigrateNeeded {
+			s.Step = StepMigrate
+		} else if len(s.Snapshot.Profiles) > 1 {
+			s.Step = StepProfile
 		} else {
-			s.Step = StepPackages
+			s.Step = StepShellPackages
 		}
 	case StepPkgMgr:
 		if len(s.Snapshot.PkgMgrOptions) > 0 {
 			s.PkgMgr = s.Snapshot.PkgMgrOptions[s.PkgMgrIndex].ID
 		}
-		s.Step = StepPackages
-	case StepPackages:
+		if s.Snapshot.MigrateNeeded {
+			s.Step = StepMigrate
+		} else if len(s.Snapshot.Profiles) > 1 {
+			s.Step = StepProfile
+		} else {
+			s.Step = StepShellPackages
+			s.PackageCursor = 0
+		}
+	case StepMigrate:
+		switch s.MigrateIndex {
+		case 1:
+			s.MigrateAction = MigrateAdopt
+		case 2:
+			s.MigrateAction = MigrateSkip
+		default:
+			s.MigrateAction = MigrateUpgrade
+		}
+		if len(s.Snapshot.Profiles) > 1 {
+			s.Step = StepProfile
+		} else {
+			s.Step = StepShellPackages
+			s.PackageCursor = 0
+		}
+	case StepProfile:
+		s.ApplyProfile(s.ProfileIndex)
+		s.Step = StepShellPackages
+		s.PackageCursor = 0
+	case StepShellPackages:
+		s.Step = StepDevPackages
+		s.PackageCursor = 0
+	case StepDevPackages:
 		if len(s.SelectedIDs()) == 0 {
-			return fmt.Errorf("select at least one package")
+			return fmt.Errorf("select at least one package or module")
 		}
 		s.Step = StepConfirm
 	case StepConfirm:
@@ -280,30 +402,49 @@ func (s *State) Next() error {
 	return nil
 }
 
-// Back returns to the previous step.
 func (s *State) Back() {
 	switch s.Step {
 	case StepPkgMgr:
-		if len(s.Snapshot.Profiles) > 1 {
-			s.Step = StepProfile
+		if s.needsPrereq() {
+			s.Step = StepPrereq
 		}
-	case StepPackages:
+	case StepMigrate:
 		if len(s.Snapshot.PkgMgrOptions) > 1 {
 			s.Step = StepPkgMgr
-		} else if len(s.Snapshot.Profiles) > 1 {
-			s.Step = StepProfile
+		} else if s.needsPrereq() {
+			s.Step = StepPrereq
 		}
+	case StepProfile:
+		if s.Snapshot.MigrateNeeded {
+			s.Step = StepMigrate
+		} else if len(s.Snapshot.PkgMgrOptions) > 1 {
+			s.Step = StepPkgMgr
+		} else if s.needsPrereq() {
+			s.Step = StepPrereq
+		}
+	case StepShellPackages:
+		if len(s.Snapshot.Profiles) > 1 {
+			s.Step = StepProfile
+		} else if s.Snapshot.MigrateNeeded {
+			s.Step = StepMigrate
+		} else if len(s.Snapshot.PkgMgrOptions) > 1 {
+			s.Step = StepPkgMgr
+		} else if s.needsPrereq() {
+			s.Step = StepPrereq
+		}
+	case StepDevPackages:
+		s.Step = StepShellPackages
+		s.PackageCursor = 0
 	case StepConfirm:
-		s.Step = StepPackages
+		s.Step = StepDevPackages
+		s.PackageCursor = 0
 	}
 }
 
-// Cancel marks the wizard cancelled.
 func (s *State) Cancel() {
 	s.Step = StepCancelled
 }
 
-// FinishRun records engine output and moves to done.
 func (s *State) FinishRun(output string, err error) {
 	s.RunOutput = output
 	if err != nil {
@@ -312,7 +453,31 @@ func (s *State) FinishRun(output string, err error) {
 	s.Step = StepDone
 }
 
-// SummaryLines is a stable text summary for tests / confirm view.
+func (s State) ProfilePreviewLines() []string {
+	if s.ProfileIndex < 0 || s.ProfileIndex >= len(s.Snapshot.Profiles) {
+		return nil
+	}
+	p := s.Snapshot.Profiles[s.ProfileIndex]
+	lines := []string{
+		fmt.Sprintf("%s (@%s)", p.Name, p.ID),
+		p.Description,
+		fmt.Sprintf("Theme: starship=%s", p.ThemeStarship),
+		"Shell:",
+	}
+	for _, pkg := range p.Packages {
+		if pkg.Group == "shell" || pkg.Category == "shells" || pkg.Category == "shell-configs" {
+			lines = append(lines, "  • "+pkg.Name)
+		}
+	}
+	lines = append(lines, "Dev:")
+	for _, pkg := range p.Packages {
+		if pkg.Group == "dev" || (pkg.Group != "shell" && pkg.Category != "shells" && pkg.Category != "shell-configs") {
+			lines = append(lines, "  • "+pkg.Name)
+		}
+	}
+	return lines
+}
+
 func (s State) SummaryLines() []string {
 	profileLabel := s.ProfileID
 	if s.Snapshot.ProfileName != "" {
@@ -322,15 +487,43 @@ func (s State) SummaryLines() []string {
 		"New machine setup",
 		fmt.Sprintf("Platform: %s", s.Snapshot.PlatformLabel),
 		fmt.Sprintf("Profile: %s", profileLabel),
+		fmt.Sprintf("Theme: starship=%s", s.ThemeStarship),
 		fmt.Sprintf("Package manager: %s", s.PkgMgr),
 		fmt.Sprintf("Mode: %s", map[bool]string{true: "DRY RUN", false: "INSTALL"}[s.DryRun]),
-		"Selected packages:",
 	}
-	for _, name := range s.SelectedNames() {
-		lines = append(lines, "  • "+name)
+	if s.MigrateAction != MigrateNone && s.MigrateAction != "" {
+		lines = append(lines, fmt.Sprintf("Migrate: %s", s.MigrateAction))
 	}
-	if len(s.SelectedNames()) == 0 {
+	lines = append(lines, "Shell / modules:")
+	any := false
+	for _, p := range s.ShellPackages {
+		if s.Selected[p.ID] {
+			any = true
+			tag := ""
+			if p.GenerateOnly {
+				tag = " [generate]"
+			}
+			lines = append(lines, "  • "+p.Name+tag)
+		}
+	}
+	if !any {
+		lines = append(lines, "  (none)")
+	}
+	lines = append(lines, "Developer apps:")
+	any = false
+	for _, p := range s.DevPackages {
+		if s.Selected[p.ID] {
+			any = true
+			lines = append(lines, "  • "+p.Name)
+		}
+	}
+	if !any {
 		lines = append(lines, "  (none)")
 	}
 	return lines
+}
+
+// SelectionCSV is a space-separated ID list for SETUP_SELECTION_IDS.
+func (s State) SelectionCSV() string {
+	return strings.Join(s.SelectedIDs(), " ")
 }

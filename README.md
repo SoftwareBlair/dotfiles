@@ -1,215 +1,49 @@
-# New machine setup (macOS + Linux)
+# dotfiles-setup
 
-Personal dotfiles plus a setup script that installs **your usual stack**, then symlinks this repo’s configs into `$HOME`.
+Cross-platform **new machine setup** for macOS and Linux. A TUI wizard installs packages and **generates** modular shell configs into your home directory. Community **profiles** (including a built-in Default) share package lists and themes — this is a tool for everyone, not one person’s private dotfiles dump.
 
-## Quick start (recommended)
-
-One command — no clone, no Go, no `cd`:
+## Quick start
 
 ```bash
+# curl (recommended one-liner)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
+
+# or Homebrew (after the first release is tagged)
+brew tap SoftwareBlair/dotfiles
+brew install dotfiles-setup
+dotfiles-setup
 ```
 
-That script will:
-1. Put the repo in `~/dotfiles` (shallow clone, or tarball if `git` is missing)
-2. Download a prebuilt TUI from [GitHub Releases](https://github.com/SoftwareBlair/dotfiles/releases) when available
-3. Launch the setup wizard (bash prompts if no TUI binary yet)
-
-Flags and env vars:
+Prefer a dry-run first:
 
 ```bash
-# Dry-run first
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)" -- -n
-
-# Force classic prompts (skip TUI download)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)" -- --bash
-
-# Custom location / branch
-DOTFILES_DIR=~/src/dotfiles DOTFILES_REF=main /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
+# or
+dotfiles-setup --dry-run
 ```
 
-Until a `v*` release exists, the installer falls back to bash prompts (TUI download 404s). After merge, tag `v0.1.0` (or run **Release TUI**) so binaries appear under Releases.
+## Documentation
 
-### Manual clone
-
-```bash
-git clone https://github.com/SoftwareBlair/dotfiles.git
-cd dotfiles/.scripts
-chmod +x setup.sh
-./setup.sh
-```
-
-Confirm once (after choosing packages) and it installs. If something is already present and an update is available, you’ll be offered a chance to upgrade it (auto-accepted with `-y`).
-
-Interactive runs prefer the **Go Bubble Tea TUI** when a binary is present (from `install.sh` / Releases, or a local `go build`). Use `./setup.sh --bash` for classic prompts. Package defaults come from a **community profile** under [`profiles/`](profiles/) (GitHub username TOML, default [`SoftwareBlair.toml`](profiles/SoftwareBlair.toml)). `-y` installs that profile’s full default set without prompting.
-
-The repo can live **anywhere**; moving to `~/dotfiles` is optional.
-
-```bash
-./setup.sh -c move_dotfiles   # optional
-```
-
-Restart your terminal when finished.
-
-## Common commands
-
-```bash
-./setup.sh                 # TUI wizard (bash fallback if TUI not built)
-./setup.sh --tui           # force Go Bubble Tea TUI
-./setup.sh --bash          # classic prompts
-./setup.sh --profile SoftwareBlair
-./setup.sh -y              # non-interactive install (profile defaults)
-./setup.sh -n              # dry-run (same prompts, no changes)
-./setup.sh -y -n           # non-interactive dry-run
-./setup.sh --pkgmgr apt    # brew | apt | dnf | pacman
-./setup.sh --undo          # reverse logged installs + symlinks
-./setup.sh --undo -n       # preview undo
-./setup.sh -h              # help
-```
-
-### TUI (Bubble Tea)
-
-Prebuilt binaries ship on GitHub Releases (built by `.github/workflows/release-tui.yml` on `v*` tags).
-
-Local build / tests:
-
-```bash
-cd .scripts/tui
-go build -o dotfiles-setup .
-go test ./...
-./test.sh                  # unit tests + catalog export smoke test
-```
-
-See [`.scripts/tui/README.md`](.scripts/tui/README.md). To publish a new TUI build: tag `vX.Y.Z` and push (or run the **Release TUI** workflow).
-
-## What’s installed
-
-Defaults come from the selected profile — see [`profiles/SoftwareBlair.toml`](profiles/SoftwareBlair.toml):
-
-| Item | Notes |
-|------|--------|
-| SFMono Nerd Font | Patched + ligaturized (not Apple’s stock SF Mono) |
-| Starship | Prompt (via this repo’s `.zshrc`) |
-| eza | `ls` replacement |
-| Warp | Terminal (+ `.warp` config) |
-| **Cursor** | Default editor |
-| Zed | Fast editor (settings under `.config/zed`) |
-| zsh + autosuggestions + syntax-highlighting + z | Shell plugins |
-| NVM | Node version manager |
-| Raycast | macOS only (`packages_macos`) |
-| VS Code | Optional when a recipe exists (`packages_optional`) |
-
-### Contribute your setup
-
-Add `profiles/YourGitHubUsername.toml` (and optional configs under `profiles/YourGitHubUsername/`). See [`profiles/README.md`](profiles/README.md).
-
-## Package managers
-
-| Manager | macOS | Linux |
-|---------|-------|-------|
-| Homebrew | Yes (preferred when installed) | Yes (Linuxbrew) |
-| apt | — | Debian / Ubuntu (used by `-y` if brew missing) |
-| dnf | — | Fedora / RHEL |
-| pacman | — | Arch |
-
-### Updates for already-installed tools
-
-| Kind | Behavior |
-|------|----------|
-| brew / apt / dnf / pacman packages | Detect outdated → offer upgrade |
-| Script installs (NVM, SFMono, some Zed/Starship paths) | Offer re-run update when marked `upgrade_offer=always` |
-
-`-y` accepts the upgrade prompt. Upgrades are logged but **not** uninstalled by `--undo`.
-
-## Dotfiles linked
-
-Symlinked into `$HOME` (not copied):
-
-- `.zshrc`, `.zshenv`, `.config` (includes Starship + Zed)
-- `.warp` when Warp is installed
-
-Shell feature flags are written to `~/.dotfiles-setup/shell-features.zsh` and sourced by [`.zshrc`](.zshrc).
-
-### Secrets (`~/.zprofile`)
-
-Setup can create or extend **`~/.zprofile`** for local secrets (API keys, tokens). That file lives in your home directory — outside this repo. Non-login shells also load it via [`.zshrc`](.zshrc).
-
-### Repo layout
-
-| Path | Role |
-|------|------|
-| [`.zshrc`](.zshrc) | Modular entrypoint (`DOTFILES_DIR`, features, aliases, plugins, Starship) |
-| [`.zshenv`](.zshenv) | Early env (NVM / Starship path helpers) |
-| [`.zsh/`](.zsh/) | `aliases.zsh`, `nvm.zsh`, `plugins.zsh`, `starship.zsh`, … |
-| [`.config/starship.toml`](.config/starship.toml) | Starship theme |
-| [`.config/zed/`](.config/zed/) | Zed settings / themes |
-| [`.warp/`](.warp/) | Warp settings / themes |
-| [`.scripts/setup.sh`](.scripts/setup.sh) | Installer entrypoint |
-| [`.scripts/lib/presets.sh`](.scripts/lib/presets.sh) | Stack selection helpers |
-| [`.scripts/lib/profiles.sh`](.scripts/lib/profiles.sh) | Load `profiles/<GitHubUser>.toml` |
-| [`profiles/`](profiles/) | Community setups (TOML + optional config trees) |
-| [`.scripts/catalog/`](.scripts/catalog/) | Install recipes |
-
-## Undo
-
-```bash
-./setup.sh --undo
-./setup.sh --undo -n       # preview
-./setup.sh --undo --select # pick which logged actions to reverse
-./setup.sh -c revert_setup
-```
-
-Reverses actions recorded in the install log, including package installs, **symlinks** (with backups), and config blocks setup added. `~/.gitconfig` is never deleted. Homebrew removal is opt-in.
-
-## Helper commands (`-c`)
-
-```bash
-./setup.sh -c move_dotfiles
-./setup.sh -c remove_git_origin_remote
-./setup.sh -c symlink_dotfile .zshrc
-./setup.sh -c unlink_dotfile .zshrc
-./setup.sh -c uninstall_nvm
-./setup.sh -c revert_setup
-```
-
-## Flags
-
-| Flag | Description |
-|------|-------------|
-| `-h`, `--help` | Show help |
-| `-y`, `--yes` | Non-interactive (auto-confirm) |
-| `-n`, `--dry-run` | Same interactive prompts; print plan; change nothing |
-| `--pkgmgr <name>` | `brew` \| `apt` \| `dnf` \| `pacman` |
-| `--undo` | Reverse logged actions |
-| `--select` | With `--undo`, choose which actions to reverse |
-| `-c <command>` | Run a helper (see above) |
-
-## State files
-
-```text
-~/.dotfiles-setup/
-  install-log.jsonl      # undo source of truth
-  shell-features.zsh     # DOTFILES_DIR, Starship flags
-  backups/               # pre-overwrite backups
-~/.dotfiles-setup.conf   # last package manager preference
-```
-
-## Lint
-
-```bash
-./.scripts/check.sh      # shellcheck when installed
-```
-
-## Troubleshooting
-
-| Issue | What to try |
+| Guide | Description |
 |-------|-------------|
-| Prompt not showing Starship | Check `~/.dotfiles-setup/shell-features.zsh`, then restart the terminal |
-| Missing glyphs / icons | Set the terminal font to **SFMono Nerd Font** (Liga SFMono) |
-| Secrets missing in terminal | Confirm `~/.zprofile` has the secrets block; restart (non-login shells load it via `.zshrc`) |
-| Wrong repo path after moving | Re-run `./setup.sh` (or `-y`) so `DOTFILES_DIR` is rewritten |
-| Undo didn’t remove a symlink | Only logged symlink actions are reversed |
+| [Install](docs/install.md) | curl, Homebrew, PATH, prerequisites |
+| [Usage](docs/usage.md) | TUI walkthrough, dry-run, flags, undo |
+| [Profiles](docs/profiles.md) | Default vs community profiles & themes |
+| [Contributing](docs/contributing.md) | Catalog recipes, modules, PRs, tests |
+| [Releasing](docs/releasing.md) | Tags, GitHub Actions, brew formula |
+| [Architecture](docs/architecture.md) | TUI ↔ bash engine ↔ generator |
+| [FAQ](docs/faq.md) | Common questions |
+
+## What it does
+
+1. Detects OS (macOS / Linux) and package manager options  
+2. Ensures `git` and `curl`  
+3. Lets you pick a **profile** (Default or a community setup) with a live preview  
+4. Select **shell** packages/modules, then **developer** apps  
+5. Confirms the plan (dry-run toggle) and installs + generates configs  
+
+Configs are written to `~/.zshrc`, `~/.zshenv`, `~/.config/starship.toml`, and `~/.dotfiles-setup/generated/` — only modules you selected.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+See [LICENSE](LICENSE) (MIT).

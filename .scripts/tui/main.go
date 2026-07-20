@@ -16,7 +16,7 @@ import (
 func main() {
 	dryRun := flag.Bool("dry-run", false, "start in dry-run mode")
 	pkgMgr := flag.String("pkgmgr", "", "package manager (brew|apt|dnf|pacman)")
-	profile := flag.String("profile", "", "setup profile (GitHub username, e.g. SoftwareBlair)")
+	profile := flag.String("profile", "", "setup profile (default|SoftwareBlair|…)")
 	catalogFile := flag.String("catalog", "", "load catalog JSON from file (tests / offline)")
 	flag.Parse()
 

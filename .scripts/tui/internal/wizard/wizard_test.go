@@ -10,13 +10,13 @@ import (
 	"github.com/SoftwareBlair/dotfiles/scripts/tui/internal/wizard"
 )
 
-func loadFixture(t *testing.T) catalog.Snapshot {
+func loadNamed(t *testing.T, name string) catalog.Snapshot {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	path := filepath.Join(filepath.Dir(file), "..", "..", "testdata", "catalog_linux_apt.json")
+	path := filepath.Join(filepath.Dir(file), "..", "..", "testdata", name)
 	snap, err := catalog.LoadFile(path)
 	if err != nil {
 		t.Fatalf("load fixture: %v", err)
@@ -24,98 +24,132 @@ func loadFixture(t *testing.T) catalog.Snapshot {
 	return snap
 }
 
-func TestNewDefaultsSelected(t *testing.T) {
-	st := wizard.New(loadFixture(t), true)
-	if !st.DryRun {
-		t.Fatal("expected dry-run")
-	}
+func TestMultiProfileStartsAtProfile(t *testing.T) {
+	st := wizard.New(loadNamed(t, "catalog_default_and_blair.json"), true)
 	if st.Step != wizard.StepPkgMgr {
+		// two pkgmgr options → pkgmgr first
 		t.Fatalf("expected pkgmgr step, got %s", st.Step)
 	}
-	ids := st.SelectedIDs()
-	if len(ids) != 5 {
-		t.Fatalf("expected 5 defaults, got %v", ids)
-	}
-	if st.SelectionCSV() != "sfmono_nerd starship eza cursor vscode" {
-		t.Fatalf("unexpected selection csv: %q", st.SelectionCSV())
-	}
-}
-
-func TestToggleAndClear(t *testing.T) {
-	st := wizard.New(loadFixture(t), true)
-	st.Step = wizard.StepPackages
-	st.PackageCursor = 0
-	st.TogglePackage() // deselect sfmono
-	if st.Selected["sfmono_nerd"] {
-		t.Fatal("expected sfmono deselected")
-	}
-	st.ClearPackages()
-	if len(st.SelectedIDs()) != 0 {
-		t.Fatalf("expected empty, got %v", st.SelectedIDs())
-	}
-	if err := st.Next(); err == nil {
-		t.Fatal("expected error advancing with empty selection")
-	}
-	st.SelectDefaultPackages()
-	if err := st.Next(); err != nil {
-		t.Fatalf("next: %v", err)
-	}
-	if st.Step != wizard.StepConfirm {
-		t.Fatalf("expected confirm, got %s", st.Step)
-	}
-}
-
-func TestPkgMgrNavigation(t *testing.T) {
-	st := wizard.New(loadFixture(t), false)
-	// Fixture pkgmgr is apt; New should prefer matching option
-	if st.PkgMgr != "apt" {
-		t.Fatalf("expected apt, got %s", st.PkgMgr)
-	}
-	st.MovePkgMgr(1) // wrap or move
-	st.MovePkgMgr(-1)
-	if st.PkgMgr != "apt" {
-		t.Fatalf("expected back to apt, got %s", st.PkgMgr)
-	}
 	_ = st.Next()
-	if st.Step != wizard.StepPackages {
-		t.Fatalf("expected packages, got %s", st.Step)
+	if st.Step != wizard.StepProfile {
+		t.Fatalf("expected profile after pkgmgr, got %s", st.Step)
 	}
 }
 
-func TestSummaryLinesStable(t *testing.T) {
-	st := wizard.New(loadFixture(t), true)
-	st.PkgMgr = "apt"
-	st.ClearPackages()
-	st.Selected["cursor"] = true
-	st.Selected["starship"] = true
-
-	got := strings.Join(st.SummaryLines(), "\n")
-	want := strings.TrimSpace(`
-New machine setup
-Platform: Linux · ubuntu · amd64
-Profile: Blair (@SoftwareBlair)
-Package manager: apt
-Mode: DRY RUN
-Selected packages:
-  • Starship
-  • Cursor
-`)
-	if got != want {
-		t.Fatalf("summary mismatch\nwant:\n%s\n\ngot:\n%s", want, got)
+func TestApplyBlairProfileLoadsDevAndAliases(t *testing.T) {
+	st := wizard.New(loadNamed(t, "catalog_default_and_blair.json"), true)
+	// Find Blair index
+	blair := -1
+	for i, p := range st.Snapshot.Profiles {
+		if p.ID == "SoftwareBlair" {
+			blair = i
+			break
+		}
+	}
+	if blair < 0 {
+		t.Fatal("blair profile missing")
+	}
+	st.ApplyProfile(blair)
+	if st.ThemeStarship != "blair" {
+		t.Fatalf("theme=%s", st.ThemeStarship)
+	}
+	if !st.Selected["zsh_aliases"] {
+		t.Fatal("expected aliases default selected")
+	}
+	if !st.Selected["cursor"] {
+		t.Fatal("expected cursor default selected")
+	}
+	if len(st.DevPackages) == 0 {
+		t.Fatal("expected dev packages")
 	}
 }
 
-func TestFlowConfirmToRunning(t *testing.T) {
-	st := wizard.New(loadFixture(t), true)
-	st.Step = wizard.StepConfirm
+func TestShellThenDevThenConfirm(t *testing.T) {
+	st := wizard.New(loadNamed(t, "catalog_default_and_blair.json"), true)
+	st.Step = wizard.StepShellPackages
 	if err := st.Next(); err != nil {
 		t.Fatal(err)
 	}
-	if st.Step != wizard.StepRunning {
+	if st.Step != wizard.StepDevPackages {
 		t.Fatalf("got %s", st.Step)
 	}
-	st.FinishRun("ok plan", nil)
-	if st.Step != wizard.StepDone || st.RunOutput != "ok plan" {
-		t.Fatalf("finish run failed: %+v", st)
+	if err := st.Next(); err != nil {
+		t.Fatal(err)
+	}
+	if st.Step != wizard.StepConfirm {
+		t.Fatalf("got %s", st.Step)
+	}
+}
+
+func TestEmptySelectionBlockedAtConfirmGate(t *testing.T) {
+	st := wizard.New(loadNamed(t, "catalog_default_and_blair.json"), true)
+	st.Step = wizard.StepDevPackages
+	st.ClearPackages()
+	for id := range st.Selected {
+		st.Selected[id] = false
+	}
+	if err := st.Next(); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestDryRunInSummary(t *testing.T) {
+	st := wizard.New(loadNamed(t, "catalog_default_and_blair.json"), true)
+	got := strings.Join(st.SummaryLines(), "\n")
+	if !strings.Contains(got, "DRY RUN") {
+		t.Fatalf("missing DRY RUN:\n%s", got)
+	}
+	if !strings.Contains(got, "Profile:") {
+		t.Fatalf("missing Profile:\n%s", got)
+	}
+	st.DryRun = false
+	got = strings.Join(st.SummaryLines(), "\n")
+	if !strings.Contains(got, "INSTALL") {
+		t.Fatalf("missing INSTALL:\n%s", got)
+	}
+}
+
+func TestMigrateAndPrereqFirstSteps(t *testing.T) {
+	st := wizard.New(loadNamed(t, "catalog_needs_migrate.json"), false)
+	if st.Step != wizard.StepPrereq {
+		t.Fatalf("expected prereq (missing git), got %s", st.Step)
+	}
+	st.PrereqIndex = 0
+	if err := st.Next(); err != nil {
+		t.Fatal(err)
+	}
+	if st.Step != wizard.StepMigrate {
+		t.Fatalf("expected migrate, got %s", st.Step)
+	}
+	_ = st.Next()
+	if st.Step != wizard.StepShellPackages {
+		t.Fatalf("expected shell (single profile), got %s", st.Step)
+	}
+}
+
+func TestProfilePreviewContainsPackages(t *testing.T) {
+	st := wizard.New(loadNamed(t, "catalog_default_and_blair.json"), true)
+	for i, p := range st.Snapshot.Profiles {
+		if p.ID == "SoftwareBlair" {
+			st.ProfileIndex = i
+			break
+		}
+	}
+	prev := strings.Join(st.ProfilePreviewLines(), "\n")
+	if !strings.Contains(prev, "Cursor") || !strings.Contains(prev, "Shell aliases") {
+		t.Fatalf("preview missing packages:\n%s", prev)
+	}
+}
+
+func TestBackNavigation(t *testing.T) {
+	st := wizard.New(loadNamed(t, "catalog_default_and_blair.json"), true)
+	st.Step = wizard.StepConfirm
+	st.Back()
+	if st.Step != wizard.StepDevPackages {
+		t.Fatalf("got %s", st.Step)
+	}
+	st.Back()
+	if st.Step != wizard.StepShellPackages {
+		t.Fatalf("got %s", st.Step)
 	}
 }

@@ -98,6 +98,51 @@ catalog_register "z" \
     "shells=zsh" \
     "install_requires_sudo=false"
 
+# Generate-only: aliases module (no package install)
+catalog_register "zsh_aliases" \
+    "name=Shell aliases" \
+    "category=shell-configs" \
+    "platforms=macos,linux" \
+    "description=Common git/ls helpers (generated module, no install)" \
+    "check=true" \
+    "install_script=true" \
+    "generate_only=true" \
+    "shells=zsh" \
+    "install_requires_sudo=false"
+
+# Optional Oh My Zsh
+catalog_register "oh_my_zsh" \
+    "name=Oh My Zsh" \
+    "category=shell-configs" \
+    "platforms=macos,linux" \
+    "description=Oh My Zsh framework (optional; off by default)" \
+    "check=test -d \$HOME/.oh-my-zsh" \
+    "install_script=install_oh_my_zsh" \
+    "uninstall_script=uninstall_oh_my_zsh" \
+    "shells=zsh" \
+    "install_requires_sudo=false"
+
+install_oh_my_zsh() {
+    local cmd='sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'
+    if dry_run_is_active; then
+        dry_run_add_step "Oh My Zsh" "$cmd" "$HOME/.oh-my-zsh" "" "false" ""
+        return 0
+    fi
+    if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    fi
+    state_log_install "oh_my_zsh" "Oh My Zsh" "install" "$cmd" "$HOME/.oh-my-zsh" "" "" "" ""
+}
+
+uninstall_oh_my_zsh() {
+    local cmd="rm -rf \$HOME/.oh-my-zsh"
+    if dry_run_is_active; then
+        dry_run_add_step "Undo: Oh My Zsh" "$cmd" "$HOME/.oh-my-zsh" "" "false" ""
+        return 0
+    fi
+    rm -rf "$HOME/.oh-my-zsh"
+}
+
 install_nvm_official() {
     local cmd='curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm install --lts && nvm alias default lts/*'
     if dry_run_is_active; then

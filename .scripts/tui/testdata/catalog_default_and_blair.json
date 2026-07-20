@@ -1,0 +1,121 @@
+{
+  "active_profile": "default",
+  "dotfiles_dir": "/home/user/dotfiles",
+  "dry_run": true,
+  "migrate_needed": false,
+  "missing_curl": false,
+  "missing_git": false,
+  "packages": [
+    {
+      "category": "shells",
+      "default": true,
+      "description": "Z shell",
+      "generate_only": false,
+      "group": "shell",
+      "id": "zsh",
+      "name": "zsh"
+    },
+    {
+      "category": "shell-configs",
+      "default": true,
+      "description": "Prompt",
+      "generate_only": false,
+      "group": "shell",
+      "id": "starship",
+      "name": "Starship"
+    }
+  ],
+  "pkgmgr": "apt",
+  "pkgmgr_options": [
+    { "default": true, "id": "brew", "label": "Homebrew (brew)" },
+    { "default": false, "id": "apt", "label": "apt — Debian/Ubuntu" }
+  ],
+  "platform": "linux",
+  "platform_label": "Linux · ubuntu · amd64",
+  "profile_description": "Clean setup from your package selections",
+  "profile_name": "Default",
+  "profiles": [
+    {
+      "default": true,
+      "description": "Clean setup from your package selections",
+      "id": "default",
+      "name": "Default",
+      "theme_starship": "stock",
+      "packages": [
+        {
+          "category": "shells",
+          "default": true,
+          "description": "Z shell",
+          "generate_only": false,
+          "group": "shell",
+          "id": "zsh",
+          "name": "zsh"
+        },
+        {
+          "category": "shell-configs",
+          "default": true,
+          "description": "Prompt",
+          "generate_only": false,
+          "group": "shell",
+          "id": "starship",
+          "name": "Starship"
+        }
+      ]
+    },
+    {
+      "default": false,
+      "description": "Warp · SFMono · Starship · eza · Cursor · Zed",
+      "id": "SoftwareBlair",
+      "name": "Blair",
+      "theme_starship": "blair",
+      "packages": [
+        {
+          "category": "shells",
+          "default": true,
+          "generate_only": false,
+          "group": "shell",
+          "id": "zsh",
+          "name": "zsh",
+          "description": ""
+        },
+        {
+          "category": "shell-configs",
+          "default": true,
+          "generate_only": false,
+          "group": "shell",
+          "id": "starship",
+          "name": "Starship",
+          "description": ""
+        },
+        {
+          "category": "shell-configs",
+          "default": true,
+          "generate_only": true,
+          "group": "shell",
+          "id": "zsh_aliases",
+          "name": "Shell aliases",
+          "description": ""
+        },
+        {
+          "category": "dev-tools",
+          "default": true,
+          "generate_only": false,
+          "group": "dev",
+          "id": "cursor",
+          "name": "Cursor",
+          "description": ""
+        },
+        {
+          "category": "fonts",
+          "default": true,
+          "generate_only": false,
+          "group": "dev",
+          "id": "sfmono_nerd",
+          "name": "SFMono Nerd Font",
+          "description": ""
+        }
+      ]
+    }
+  ],
+  "theme_starship": "stock"
+}

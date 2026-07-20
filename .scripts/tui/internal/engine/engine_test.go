@@ -12,10 +12,12 @@ import (
 func TestRunPassesSelectionAndFlags(t *testing.T) {
 	dir := t.TempDir()
 	script := filepath.Join(dir, "setup.sh")
-	// Fake setup.sh echoes its env/args for assertions
 	content := "#!/bin/bash\n" +
 		"echo \"ARGS:$*\"\n" +
 		"echo \"SELECTION:$SETUP_SELECTION_IDS\"\n" +
+		"echo \"PROFILE:$SETUP_PROFILE\"\n" +
+		"echo \"THEMES:$SETUP_THEMES\"\n" +
+		"echo \"MIGRATE:$SETUP_MIGRATE\"\n" +
 		"echo \"NO_TUI:$DOTFILES_NO_TUI\"\n"
 	if err := os.WriteFile(script, []byte(content), 0o755); err != nil {
 		t.Fatal(err)
@@ -23,24 +25,29 @@ func TestRunPassesSelectionAndFlags(t *testing.T) {
 
 	r := engine.Runner{SetupPath: script, Environ: []string{"PATH=" + os.Getenv("PATH")}}
 	res, err := r.Run(engine.Request{
-		PkgMgr:       "apt",
-		Profile:      "SoftwareBlair",
-		SelectionIDs: []string{"cursor", "starship"},
-		DryRun:       true,
-		Yes:          true,
+		PkgMgr:        "apt",
+		Profile:       "default",
+		SelectionIDs:  []string{"zsh", "starship"},
+		ThemeStarship: "stock",
+		Migrate:       "upgrade",
+		DryRun:        true,
+		Yes:           true,
 	})
 	if err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	out := res.Stdout
-	if !strings.Contains(out, "ARGS:-y -n --profile SoftwareBlair --pkgmgr apt --bash") {
-		t.Fatalf("unexpected args line:\n%s", out)
+	if !strings.Contains(out, "ARGS:-y -n --profile default --pkgmgr apt --bash") {
+		t.Fatalf("unexpected args:\n%s", out)
 	}
-	if !strings.Contains(out, "SELECTION:cursor starship") {
+	if !strings.Contains(out, "SELECTION:zsh starship") {
 		t.Fatalf("unexpected selection:\n%s", out)
 	}
-	if !strings.Contains(out, "NO_TUI:1") {
-		t.Fatalf("expected DOTFILES_NO_TUI:\n%s", out)
+	if !strings.Contains(out, "THEMES:starship=stock") {
+		t.Fatalf("unexpected themes:\n%s", out)
+	}
+	if !strings.Contains(out, "MIGRATE:upgrade") {
+		t.Fatalf("unexpected migrate:\n%s", out)
 	}
 }
 

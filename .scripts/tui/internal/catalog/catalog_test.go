@@ -8,23 +8,33 @@ import (
 	"github.com/SoftwareBlair/dotfiles/scripts/tui/internal/catalog"
 )
 
-func TestParseFixture(t *testing.T) {
+func TestParseMultiProfileFixture(t *testing.T) {
 	_, file, _, _ := runtime.Caller(0)
-	path := filepath.Join(filepath.Dir(file), "..", "..", "testdata", "catalog_linux_apt.json")
+	path := filepath.Join(filepath.Dir(file), "..", "..", "testdata", "catalog_default_and_blair.json")
 	snap, err := catalog.LoadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snap.PkgMgr != "apt" {
-		t.Fatalf("pkgmgr=%s", snap.PkgMgr)
+	if len(snap.Profiles) != 2 {
+		t.Fatalf("profiles=%d", len(snap.Profiles))
 	}
-	if len(snap.Packages) != 5 {
-		t.Fatalf("packages=%d", len(snap.Packages))
+	if snap.ActiveProfile != "default" {
+		t.Fatalf("active=%s", snap.ActiveProfile)
 	}
-	if snap.Packages[0].ID != "sfmono_nerd" || !snap.Packages[0].Default {
-		t.Fatalf("unexpected first package: %+v", snap.Packages[0])
+	shell := snap.ShellPackages()
+	if len(shell) < 1 {
+		t.Fatal("expected shell packages")
 	}
-	if len(snap.PkgMgrOptions) != 2 {
-		t.Fatalf("pkgmgr options=%d", len(snap.PkgMgrOptions))
+}
+
+func TestParseMigrateFixture(t *testing.T) {
+	_, file, _, _ := runtime.Caller(0)
+	path := filepath.Join(filepath.Dir(file), "..", "..", "testdata", "catalog_needs_migrate.json")
+	snap, err := catalog.LoadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !snap.MigrateNeeded || !snap.MissingGit {
+		t.Fatalf("migrate=%v git=%v", snap.MigrateNeeded, snap.MissingGit)
 	}
 }

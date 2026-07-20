@@ -4,13 +4,12 @@
 PRESET_NAME=""
 PRESET_IDS=""
 
-# Fallback if a profile has not been loaded yet (tests / early help).
 MY_SETUP="${MY_SETUP:-}"
 MY_SETUP_MACOS="${MY_SETUP_MACOS:-}"
 MY_SETUP_OPTIONAL="${MY_SETUP_OPTIONAL:-}"
-HELP_INCLUDES_EDITORS="${HELP_INCLUDES_EDITORS:-Cursor, Zed}"
-HELP_INCLUDES_TERMINAL="${HELP_INCLUDES_TERMINAL:-Starship · eza}"
-HELP_INCLUDES_SHELL="${HELP_INCLUDES_SHELL:-zsh + plugins}"
+HELP_INCLUDES_EDITORS="${HELP_INCLUDES_EDITORS:-}"
+HELP_INCLUDES_TERMINAL="${HELP_INCLUDES_TERMINAL:-}"
+HELP_INCLUDES_SHELL="${HELP_INCLUDES_SHELL:-}"
 
 my_setup_ids() {
     local ids="$MY_SETUP"
@@ -26,9 +25,8 @@ my_setup_ids() {
     echo "$ids"
 }
 
-# Apply the full default stack for the loaded profile (used by -y / non-interactive).
 apply_my_setup() {
-    PRESET_NAME="${PROFILE_ID:-mine}"
+    PRESET_NAME="${PROFILE_ID:-default}"
     PRESET_IDS="$(my_setup_ids)"
     installer_clear_selections
     SELECTED_SHELL=""
@@ -42,12 +40,11 @@ apply_my_setup() {
     done
 }
 
-# Apply an explicit ID list (space-separated), e.g. from the Go TUI via SETUP_SELECTION_IDS.
 apply_selection_ids() {
     local ids="$1"
     installer_clear_selections
     SELECTED_SHELL=""
-    PRESET_NAME="${PROFILE_ID:-mine}"
+    PRESET_NAME="${PROFILE_ID:-default}"
     local id
     for id in $ids; do
         [[ -z "$id" ]] && continue
@@ -61,9 +58,6 @@ apply_selection_ids() {
     [[ ${#SELECTED_IDS[@]} -gt 0 ]]
 }
 
-# Interactive multi-select from the profile stack (defaults pre-selected).
-# -y keeps the full default set without prompting.
-# SETUP_SELECTION_IDS (space-separated) applies a precomputed selection (TUI / tests).
 pick_my_setup() {
     if [[ -n "${SETUP_SELECTION_IDS:-}" ]]; then
         apply_selection_ids "$SETUP_SELECTION_IDS"
@@ -88,15 +82,15 @@ pick_my_setup() {
     fi
 
     echo ""
-    prompt_style "Choose packages"
+    prompt_style "Choose packages & modules"
     if [[ -n "${PROFILE_ID:-}" ]]; then
         prompt_info "Defaults from @${PROFILE_ID} are pre-selected — add or remove as you like."
     else
-        prompt_info "Defaults from the selected profile are pre-selected — add or remove as you like."
+        prompt_info "Defaults from the selected profile are pre-selected."
     fi
 
     local picked=""
-    picked="$(prompt_choose_many "Select packages to install" "${labels[@]}")"
+    picked="$(prompt_choose_many "Select packages to install / modules to generate" "${labels[@]}")"
 
     if [[ -z "$(echo "$picked" | sed '/^$/d')" ]]; then
         prompt_warn "Nothing selected — cancelled."
@@ -105,7 +99,7 @@ pick_my_setup() {
 
     installer_clear_selections
     SELECTED_SHELL=""
-    PRESET_NAME="${PROFILE_ID:-mine}"
+    PRESET_NAME="${PROFILE_ID:-default}"
 
     local label picked_id
     while IFS= read -r label; do
@@ -130,24 +124,18 @@ pick_my_setup() {
 }
 
 print_my_setup_summary() {
-    local id
+    local id cat
     if [[ -n "${PROFILE_ID:-}" ]]; then
         echo "  Profile: ${PROFILE_NAME:-$PROFILE_ID} (@${PROFILE_ID})"
     fi
-    echo "  Selected packages:"
+    echo "  Selected:"
     for id in "${SELECTED_IDS[@]}"; do
-        echo "    • $(catalog_get "$id" name)"
+        cat="$(catalog_get "$id" category)"
+        if [[ "$(catalog_get "$id" generate_only)" == "true" ]]; then
+            echo "    • $(catalog_get "$id" name)  [generate]"
+        else
+            echo "    • $(catalog_get "$id" name)  [$cat]"
+        fi
     done
-    local links=""
-    local p
-    for p in "${SYMLINK_TARGETS[@]:-}"; do
-        links="$links $p"
-    done
-    links="${links# }"
-    [[ -n "$links" ]] && echo "    • symlink $links (as applicable)"
-    if [[ " ${SELECTED_IDS[*]} " == *" starship "* ]] \
-        || [[ " ${SELECTED_IDS[*]} " == *" zsh_autosuggestions "* ]] \
-        || [[ " ${SELECTED_IDS[*]} " == *" zsh_syntax_highlighting "* ]]; then
-        echo "    • Starship / zsh plugins via profile configs (when selected)"
-    fi
+    echo "    • generate ~/.zshrc + ~/.dotfiles-setup/generated/ (selected modules)"
 }

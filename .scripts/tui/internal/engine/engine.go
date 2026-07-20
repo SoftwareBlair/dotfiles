@@ -11,19 +11,20 @@ import (
 
 // Runner executes the bash setup engine with a fixed selection.
 type Runner struct {
-	// SetupPath is the absolute path to setup.sh
 	SetupPath string
-	// Environ is an optional base environment (defaults to os.Environ).
-	Environ []string
+	Environ   []string
 }
 
 // Request is a non-interactive setup invocation.
 type Request struct {
-	PkgMgr       string
-	Profile      string
-	SelectionIDs []string
-	DryRun       bool
-	Yes          bool
+	PkgMgr        string
+	Profile       string
+	SelectionIDs  []string
+	ThemeStarship string
+	Migrate       string
+	DryRun        bool
+	Yes           bool
+	InstallPrereq bool
 }
 
 // Result captures stdout/stderr/exit status.
@@ -55,16 +56,22 @@ func (r Runner) Run(req Request) (Result, error) {
 	if req.PkgMgr != "" {
 		args = append(args, "--pkgmgr", req.PkgMgr)
 	}
-	args = append(args, "--bash") // never re-enter the TUI
+	args = append(args, "--bash")
 
 	cmd := exec.Command(r.SetupPath, args...)
 	env := r.Environ
 	if env == nil {
 		env = os.Environ()
 	}
+	themes := ""
+	if req.ThemeStarship != "" {
+		themes = "starship=" + req.ThemeStarship
+	}
 	env = append(env,
 		"SETUP_SELECTION_IDS="+strings.Join(req.SelectionIDs, " "),
 		"SETUP_PROFILE="+req.Profile,
+		"SETUP_THEMES="+themes,
+		"SETUP_MIGRATE="+req.Migrate,
 		"DOTFILES_NO_TUI=1",
 	)
 	cmd.Env = env

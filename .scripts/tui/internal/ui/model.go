@@ -22,10 +22,9 @@ var (
 
 // Model is the Bubble Tea model wrapping wizard.State.
 type Model struct {
-	State  wizard.State
-	Width  int
-	Height int
-
+	State    wizard.State
+	Width    int
+	Height   int
 	Engine   engine.Runner
 	status   string
 	quitting bool
@@ -51,7 +50,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Width = msg.Width
 		m.Height = msg.Height
 		return m, nil
-
 	case runFinishedMsg:
 		m.State.FinishRun(msg.output, msg.err)
 		if msg.err != nil {
@@ -60,7 +58,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = "complete"
 		}
 		return m, nil
-
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
@@ -86,9 +83,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.quitting = true
 		return m, tea.Quit
 	case "esc":
-		if m.State.Step == wizard.StepProfile ||
-			(m.State.Step == wizard.StepPkgMgr && len(m.State.Snapshot.Profiles) <= 1) ||
-			(m.State.Step == wizard.StepPackages && len(m.State.Snapshot.PkgMgrOptions) <= 1 && len(m.State.Snapshot.Profiles) <= 1) {
+		if m.State.Step == m.State.FirstVisibleStep() {
 			m.State.Cancel()
 			m.quitting = true
 			return m, tea.Quit
@@ -99,14 +94,18 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch m.State.Step {
-	case wizard.StepProfile:
+	case wizard.StepPrereq:
 		switch msg.String() {
 		case "up", "k":
-			m.State.MoveProfile(-1)
+			m.State.MovePrereq(-1)
 		case "down", "j":
-			m.State.MoveProfile(1)
+			m.State.MovePrereq(1)
 		case "enter", " ":
-			_ = m.State.Next()
+			if err := m.State.Next(); err != nil {
+				m.status = err.Error()
+			} else {
+				m.status = ""
+			}
 		}
 	case wizard.StepPkgMgr:
 		switch msg.String() {
@@ -117,7 +116,25 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			_ = m.State.Next()
 		}
-	case wizard.StepPackages:
+	case wizard.StepMigrate:
+		switch msg.String() {
+		case "up", "k":
+			m.State.MoveMigrate(-1)
+		case "down", "j":
+			m.State.MoveMigrate(1)
+		case "enter", " ":
+			_ = m.State.Next()
+		}
+	case wizard.StepProfile:
+		switch msg.String() {
+		case "up", "k":
+			m.State.MoveProfile(-1)
+		case "down", "j":
+			m.State.MoveProfile(1)
+		case "enter", " ":
+			_ = m.State.Next()
+		}
+	case wizard.StepShellPackages, wizard.StepDevPackages:
 		switch msg.String() {
 		case "up", "k":
 			m.State.MovePackageCursor(-1)
@@ -145,8 +162,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "enter":
 			_ = m.State.Next()
 			return m, m.runEngine()
-		case "backspace":
-			m.State.Back()
 		}
 	}
 	return m, nil
@@ -157,11 +172,14 @@ func (m Model) runEngine() tea.Cmd {
 	eng := m.Engine
 	return func() tea.Msg {
 		res, err := eng.Run(engine.Request{
-			PkgMgr:       st.PkgMgr,
-			Profile:      st.ProfileID,
-			SelectionIDs: st.SelectedIDs(),
-			DryRun:       st.DryRun,
-			Yes:          true,
+			PkgMgr:        st.PkgMgr,
+			Profile:       st.ProfileID,
+			SelectionIDs:  st.SelectedIDs(),
+			ThemeStarship: st.ThemeStarship,
+			Migrate:       string(st.MigrateAction),
+			DryRun:        st.DryRun,
+			Yes:           true,
+			InstallPrereq: st.PrereqInstall && (st.Snapshot.MissingGit || st.Snapshot.MissingCurl),
 		})
 		out := res.Stdout
 		if res.Stderr != "" {
@@ -177,20 +195,24 @@ func (m Model) View() string {
 	}
 
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("New machine setup"))
+	b.WriteString(titleStyle.Render("dotfiles-setup"))
 	b.WriteString("  ")
 	b.WriteString(dimStyle.Render(m.State.Snapshot.PlatformLabel))
-	b.WriteString("\n")
-	b.WriteString(dimStyle.Render(m.State.Snapshot.DotfilesDir))
 	b.WriteString("\n\n")
 
 	switch m.State.Step {
-	case wizard.StepProfile:
-		b.WriteString(m.viewProfile())
+	case wizard.StepPrereq:
+		b.WriteString(m.viewPrereq())
 	case wizard.StepPkgMgr:
 		b.WriteString(m.viewPkgMgr())
-	case wizard.StepPackages:
-		b.WriteString(m.viewPackages())
+	case wizard.StepMigrate:
+		b.WriteString(m.viewMigrate())
+	case wizard.StepProfile:
+		b.WriteString(m.viewProfile())
+	case wizard.StepShellPackages:
+		b.WriteString(m.viewPackages("Shell environment"))
+	case wizard.StepDevPackages:
+		b.WriteString(m.viewPackages("Developer applications"))
 	case wizard.StepConfirm:
 		b.WriteString(m.viewConfirm())
 	case wizard.StepRunning:
@@ -212,26 +234,29 @@ func (m Model) View() string {
 	return b.String()
 }
 
-func (m Model) viewProfile() string {
+func (m Model) viewPrereq() string {
 	var b strings.Builder
-	b.WriteString(selStyle.Render("Setup profile"))
-	b.WriteString("  ")
-	b.WriteString(dimStyle.Render("GitHub username"))
+	b.WriteString(selStyle.Render("Prerequisites"))
 	b.WriteString("\n\n")
-	for i, p := range m.State.Snapshot.Profiles {
+	missing := []string{}
+	if m.State.Snapshot.MissingGit {
+		missing = append(missing, "git")
+	}
+	if m.State.Snapshot.MissingCurl {
+		missing = append(missing, "curl")
+	}
+	b.WriteString(fmt.Sprintf("Missing: %s\n\n", strings.Join(missing, ", ")))
+	opts := []string{"Install missing tools", "Cancel (cannot continue)"}
+	for i, o := range opts {
 		cursor := "  "
-		if i == m.State.ProfileIndex {
+		if i == m.State.PrereqIndex {
 			cursor = "> "
 		}
-		line := fmt.Sprintf("%s%s (@%s)", cursor, p.Name, p.ID)
-		if p.Description != "" {
-			line += " — " + p.Description
-		}
-		if i == m.State.ProfileIndex {
+		line := cursor + o
+		if i == m.State.PrereqIndex {
 			line = selStyle.Render(line)
 		}
-		b.WriteString(line)
-		b.WriteString("\n")
+		b.WriteString(line + "\n")
 	}
 	return b.String()
 }
@@ -249,19 +274,67 @@ func (m Model) viewPkgMgr() string {
 		if i == m.State.PkgMgrIndex {
 			line = selStyle.Render(line)
 		}
-		b.WriteString(line)
-		b.WriteString("\n")
+		b.WriteString(line + "\n")
 	}
 	return b.String()
 }
 
-func (m Model) viewPackages() string {
+func (m Model) viewMigrate() string {
 	var b strings.Builder
-	b.WriteString(selStyle.Render("Select packages"))
+	b.WriteString(selStyle.Render("Existing configuration detected"))
+	b.WriteString("\n\n")
+	opts := []string{
+		"Upgrade / regenerate managed configs",
+		"Backup existing files and adopt generated setup",
+		"Skip migration for now",
+	}
+	for i, o := range opts {
+		cursor := "  "
+		if i == m.State.MigrateIndex {
+			cursor = "> "
+		}
+		line := cursor + o
+		if i == m.State.MigrateIndex {
+			line = selStyle.Render(line)
+		}
+		b.WriteString(line + "\n")
+	}
+	return b.String()
+}
+
+func (m Model) viewProfile() string {
+	var b strings.Builder
+	b.WriteString(selStyle.Render("Setup profile"))
+	b.WriteString("  ")
+	b.WriteString(dimStyle.Render("Default = fresh install"))
+	b.WriteString("\n\n")
+	for i, p := range m.State.Snapshot.Profiles {
+		cursor := "  "
+		if i == m.State.ProfileIndex {
+			cursor = "> "
+		}
+		line := fmt.Sprintf("%s%s (@%s)", cursor, p.Name, p.ID)
+		if i == m.State.ProfileIndex {
+			line = selStyle.Render(line)
+		}
+		b.WriteString(line + "\n")
+	}
+	b.WriteString("\n")
+	b.WriteString(boxStyle.Render(strings.Join(m.State.ProfilePreviewLines(), "\n")))
+	return b.String()
+}
+
+func (m Model) viewPackages(title string) string {
+	var b strings.Builder
+	b.WriteString(selStyle.Render(title))
 	b.WriteString("  ")
 	b.WriteString(dimStyle.Render(fmt.Sprintf("(%s)", m.State.PkgMgr)))
 	b.WriteString("\n\n")
-	for i, p := range m.State.Snapshot.Packages {
+	list := m.State.ShellPackages
+	if m.State.Step == wizard.StepDevPackages {
+		list = m.State.DevPackages
+	}
+	for i, p := range list {
 		cursor := "  "
 		if i == m.State.PackageCursor {
 			cursor = "> "
@@ -270,15 +343,21 @@ func (m Model) viewPackages() string {
 		if m.State.Selected[p.ID] {
 			mark = "[x]"
 		}
+		extra := ""
+		if p.GenerateOnly {
+			extra = "  " + dimStyle.Render("generate")
+		}
 		line := fmt.Sprintf("%s%s %s", cursor, mark, p.Name)
 		if i == m.State.PackageCursor {
 			line = selStyle.Render(line)
 		}
-		b.WriteString(line)
-		b.WriteString("\n")
+		b.WriteString(line + extra + "\n")
+	}
+	if len(list) == 0 {
+		b.WriteString(dimStyle.Render("  (none for this profile — press enter to continue)\n"))
 	}
 	b.WriteString("\n")
-	b.WriteString(dimStyle.Render(fmt.Sprintf("%d selected", len(m.State.SelectedIDs()))))
+	b.WriteString(dimStyle.Render(fmt.Sprintf("%d selected total", len(m.State.SelectedIDs()))))
 	return b.String()
 }
 
@@ -286,13 +365,12 @@ func (m Model) viewConfirm() string {
 	var b strings.Builder
 	b.WriteString(selStyle.Render("Confirm"))
 	b.WriteString("\n\n")
-	body := strings.Join(m.State.SummaryLines(), "\n")
-	b.WriteString(boxStyle.Render(body))
+	b.WriteString(boxStyle.Render(strings.Join(m.State.SummaryLines(), "\n")))
 	b.WriteString("\n\n")
 	if m.State.DryRun {
 		b.WriteString(okStyle.Render("Dry-run mode — nothing will be installed."))
 	} else {
-		b.WriteString(errStyle.Render("Install mode — packages and symlinks will be applied."))
+		b.WriteString(errStyle.Render("Install mode — packages and configs will be applied."))
 	}
 	b.WriteString("\n")
 	b.WriteString(dimStyle.Render("Press n to toggle dry-run / install."))
@@ -311,7 +389,6 @@ func (m Model) viewDone() string {
 		b.WriteString(okStyle.Render("Setup complete — restart your terminal."))
 	}
 	b.WriteString("\n\n")
-	// Tail of engine output (keep view readable)
 	out := strings.TrimSpace(m.State.RunOutput)
 	if out != "" {
 		lines := strings.Split(out, "\n")
@@ -325,12 +402,10 @@ func (m Model) viewDone() string {
 
 func (m Model) helpLine() string {
 	switch m.State.Step {
-	case wizard.StepProfile:
-		return "↑/↓ move · enter select · q quit"
-	case wizard.StepPkgMgr:
+	case wizard.StepPrereq, wizard.StepPkgMgr, wizard.StepMigrate, wizard.StepProfile:
 		return "↑/↓ move · enter select · esc back · q quit"
-	case wizard.StepPackages:
-		return "↑/↓ move · space toggle · a all · d defaults · enter continue · esc back · q quit"
+	case wizard.StepShellPackages, wizard.StepDevPackages:
+		return "↑/↓ move · space toggle · a all · d defaults · c clear · enter continue · esc back · q quit"
 	case wizard.StepConfirm:
 		return "enter run · n toggle dry-run · esc back · q quit"
 	case wizard.StepRunning:

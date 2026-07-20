@@ -27,6 +27,7 @@ installer_offer_updates() {
     local any_installed=false
 
     for id in "${SELECTED_IDS[@]}"; do
+        [[ "$(catalog_get "$id" generate_only)" == "true" ]] && continue
         if installer_is_installed "$id"; then
             any_installed=true
             break
@@ -37,6 +38,7 @@ installer_offer_updates() {
     pkgmgr_refresh_metadata
 
     for id in "${SELECTED_IDS[@]}"; do
+        [[ "$(catalog_get "$id" generate_only)" == "true" ]] && continue
         installer_is_installed "$id" || continue
         if catalog_has_update "$id"; then
             outdated_ids+=("$id")
@@ -115,6 +117,12 @@ installer_run_selections() {
     installer_offer_updates || failed=$?
 
     for id in "${SELECTED_IDS[@]}"; do
+        # Generate-only modules (e.g. zsh_aliases) — no package install
+        if [[ "$(catalog_get "$id" generate_only)" == "true" ]]; then
+            report_skip "$(catalog_get "$id" name) (generate-only)" 2>/dev/null || true
+            continue
+        fi
+
         local name cmd
         name="$(catalog_get "$id" name)"
 

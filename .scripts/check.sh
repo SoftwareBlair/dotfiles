@@ -26,5 +26,9 @@ shellcheck -x -s bash "${files[@]}"
 echo "OK"
 
 if [[ -x "$SCRIPTS_DIR/tui/test.sh" ]] || [[ -f "$SCRIPTS_DIR/tui/test.sh" ]]; then
-    bash "$SCRIPTS_DIR/tui/test.sh"
+    bash "$SCRIPTS_DIR/tui/test.sh" || exit 1
+fi
+
+if [[ -f "$SCRIPTS_DIR/validate-profiles.sh" ]]; then
+    bash "$SCRIPTS_DIR/validate-profiles.sh" || exit 1
 fi

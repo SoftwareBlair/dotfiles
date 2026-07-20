@@ -1,0 +1,12 @@
+# Built-in fresh-install profile — generate configs from package selections.
+github = "default"
+name = "Default"
+description = "Clean setup from your package selections (stock themes)"
+
+packages_shell = ["zsh", "starship"]
+packages_dev = []
+packages_macos = []
+packages_optional = []
+
+[themes]
+starship = "stock"
