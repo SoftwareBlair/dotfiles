@@ -218,13 +218,14 @@ ensure_core_prereqs() {
 }
 
 run_setup() {
+    # state_init is a no-op during dry-run (must not create ~/.dotfiles-setup).
     state_init
     load_setup_prefs
     ensure_gum
 
     prompt_welcome "New machine setup" "$(platform_label)"
     prompt_info "Tool root: $DOTFILES_DIR"
-    dry_run_is_active && prompt_info "Dry-run: same prompts as a real run; nothing will be installed or written."
+    dry_run_is_active && prompt_info "Dry-run: same prompts as a real run; nothing will be installed or written (including ~/.dotfiles-setup)."
 
     local count
     count="$(state_log_count)"

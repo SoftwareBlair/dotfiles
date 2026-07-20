@@ -63,6 +63,31 @@ test ! -f "$HOME/.dotfiles-setup/generated/starship.zsh"
 echo "OK — generate + prune"
 rm -rf "$TMPHOME"
 
+echo "Smoke: dry-run creates no ~/.dotfiles-setup…"
+TMPHOME="$(mktemp -d)"
+if ! HOME="$TMPHOME" bash "$ROOT/.scripts/setup.sh" -y -n --profile default --pkgmgr apt --bash >/tmp/dotfiles-dry-run.out 2>&1; then
+    echo "dry-run setup failed:" >&2
+    cat /tmp/dotfiles-dry-run.out >&2
+    rm -rf "$TMPHOME"
+    exit 1
+fi
+if [[ -e "$TMPHOME/.dotfiles-setup" ]]; then
+    echo "dry-run created ~/.dotfiles-setup — must create nothing" >&2
+    find "$TMPHOME" -maxdepth 3 -print >&2
+    rm -rf "$TMPHOME"
+    exit 1
+fi
+if [[ -e "$TMPHOME/.zshrc" || -e "$TMPHOME/.zshenv" || -e "$TMPHOME/.config/starship.toml" ]]; then
+    echo "dry-run wrote shell configs — must create nothing" >&2
+    find "$TMPHOME" -maxdepth 3 -print >&2
+    rm -rf "$TMPHOME"
+    exit 1
+fi
+grep -q 'Dry run complete\|No changes were made\|DRY RUN' /tmp/dotfiles-dry-run.out \
+    || { echo "dry-run output missing completion marker:" >&2; cat /tmp/dotfiles-dry-run.out >&2; rm -rf "$TMPHOME"; exit 1; }
+echo "OK — dry-run left HOME empty of setup artifacts"
+rm -rf "$TMPHOME"
+
 echo "Smoke: validate-profiles…"
 bash "$ROOT/.scripts/validate-profiles.sh" || exit 1
 

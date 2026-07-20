@@ -2,6 +2,10 @@
 # Install log read/write under ~/.dotfiles-setup/
 
 state_init() {
+    # Dry-run must leave the filesystem untouched (no ~/.dotfiles-setup).
+    if dry_run_is_active 2>/dev/null; then
+        return 0
+    fi
     mkdir -p "$STATE_DIR" "$BACKUP_DIR"
     touch "$INSTALL_LOG"
 }
@@ -112,6 +116,9 @@ state_backup_path() {
 }
 
 save_setup_prefs() {
+    if dry_run_is_active 2>/dev/null; then
+        return 0
+    fi
     state_init
     {
         echo "PKG_MGR=${PKG_MGR:-}"

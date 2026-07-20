@@ -150,7 +150,9 @@ generate_configs() {
 
     _generate_prune_modules "${modules[@]}"
 
-    mkdir -p "$GENERATED_DIR" 2>/dev/null || true
+    if ! dry_run_is_active 2>/dev/null; then
+        mkdir -p "$GENERATED_DIR" 2>/dev/null || true
+    fi
 
     for mod in "${modules[@]}"; do
         local tmpl="$root/zsh/modules/${mod}.zsh.tmpl"
