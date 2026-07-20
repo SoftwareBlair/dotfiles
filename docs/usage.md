@@ -49,7 +49,7 @@ dotfiles-setup --dry-run
 ./.scripts/setup.sh -n --bash --profile default
 ```
 
-Same prompts/plan; no installs or file writes.
+Same prompts/plan; **no installs and no file writes** — including no `~/.dotfiles-setup/` directory.
 
 ## Non-interactive
 
