@@ -4,12 +4,11 @@
 
 ```bash
 ./.scripts/setup.sh
-# or after curl install:
-# (from ~/dotfiles)
+# or after curl install (from ~/dotfiles):
 ./.scripts/setup.sh
 ```
 
-Uses **gum** for prompts (offers to download gum if missing).
+Uses **gum** for prompts when available (not installed during dry-run).
 
 ## Flow
 
@@ -25,15 +24,38 @@ Oh My Zsh is **not** offered.
 
 ## Dry-run
 
-True no-op: **no** brew installs, **no** config writes, **no** `~/.dotfiles-setup/`.
+True no-op: **no** brew installs, **no** config writes, **no** `~/.dotfiles-setup/`, **no** gum download.
 
 ```bash
 ./.scripts/setup.sh -n
 ./.scripts/setup.sh -y -n
-/bin/bash -c "$(curl -fsSL .../install.sh)" -- -n
+/bin/bash -c "$(curl -fsSL …/install.sh)" -- -n
 ```
 
 Interactive: on confirm, choose **Preview plan (dry-run)**.
+
+Curl dry-run clones into a temp directory and removes it afterward (when `DOTFILES_DIR` is unset).
+
+## Undo / reset (reverse everything)
+
+After a real install, actions are logged under `~/.dotfiles-setup/install-log.jsonl`.
+
+```bash
+./.scripts/setup.sh --undo          # uninstall packages + remove/restore generated configs
+./.scripts/setup.sh --undo -n       # preview undo plan
+./.scripts/setup.sh --undo --select # pick individual actions
+./.scripts/setup.sh --reset         # full undo + delete ~/.dotfiles-setup
+```
+
+`--undo` / `--reset` will:
+
+- `brew uninstall` logged packages (casks/formulas)
+- Remove generated `~/.zshrc`, modules, starship.toml (or restore backups if present)
+- Strip brew/secrets blocks from `~/.zprofile`
+- Optionally uninstall Homebrew if this setup installed it
+- `--reset` also removes `~/.dotfiles-setup/`
+
+Upgrades are not rolled back to older package versions (use uninstall via undo if you want them gone).
 
 ## Updates
 
@@ -59,14 +81,9 @@ Dry-run records would-be upgrades in the printed plan only.
 
 | Flag | Meaning |
 |------|---------|
-| `-n` / `--dry-run` | Plan only |
+| `-n` / `--dry-run` | Plan only (zero file writes) |
 | `-y` / `--yes` | Non-interactive (shell + default apps; auto-accept updates) |
-| `--undo` | Reverse logged actions |
+| `--undo` | Reverse all logged installs/configs |
+| `--undo --select` | Choose which actions to reverse |
+| `--reset` | Full undo + remove `~/.dotfiles-setup` |
 | `--tui` | Optional experimental Go TUI |
-
-## Undo
-
-```bash
-./.scripts/setup.sh --undo
-./.scripts/setup.sh --undo -n
-```

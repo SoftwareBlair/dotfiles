@@ -40,6 +40,7 @@ DRY_RUN=""
 YES_MODE=""
 UNDO_MODE=""
 UNDO_SELECT=""
+RESET_MODE=""
 PKG_MGR_FLAG=""
 RUN_COMMAND=""
 FORCE_TUI=""
@@ -63,11 +64,13 @@ usage() {
     echo -e "  ${w}Usage${o}"
     echo -e "    ${g}./setup.sh${o}                   Gum wizard (bash)"
     echo -e "    ${g}./setup.sh -y${o}                Non-interactive (shell + default apps)"
-    echo -e "    ${g}./setup.sh -n${o}                Dry-run (plan only, no writes)"
+    echo -e "    ${g}./setup.sh -n${o}                Dry-run (plan only, zero file writes)"
     echo -e "    ${g}./setup.sh -y -n${o}             Non-interactive dry-run"
-    echo -e "    ${g}./setup.sh --undo${o}            Reverse logged actions"
+    echo -e "    ${g}./setup.sh --undo${o}            Reverse all logged installs/configs"
     echo -e "    ${g}./setup.sh --undo -n${o}         Preview undo"
-    echo -e "    ${g}./setup.sh --tui${o}             Optional experimental Go TUI (if binary built)"
+    echo -e "    ${g}./setup.sh --undo --select${o}   Choose what to reverse"
+    echo -e "    ${g}./setup.sh --reset${o}           Full reverse + remove ~/.dotfiles-setup"
+    echo -e "    ${g}./setup.sh --tui${o}             Optional experimental Go TUI"
     echo -e "    ${g}./setup.sh -c${o} ${d}<helper>${o}       export_wizard_catalog · ..."
     echo ""
     echo -e "  ${w}Defaults${o}"
@@ -90,6 +93,7 @@ parse_args() {
             --tui) FORCE_TUI=1; shift ;;
             --bash) FORCE_BASH=1; shift ;;
             --undo) UNDO_MODE=1; shift ;;
+            --reset) RESET_MODE=1; UNDO_MODE=1; shift ;;
             --select) UNDO_SELECT=true; shift ;;
             --profile)
                 PROFILE_FLAG="${2:-}"
@@ -328,7 +332,11 @@ if [[ -n "$UNDO_MODE" ]]; then
     ensure_gum
     PKG_MGR="${PKG_MGR_FLAG:-brew}"
     ensure_brew_shellenv || true
-    run_undo "${UNDO_SELECT:-false}"
+    if [[ -n "$RESET_MODE" ]]; then
+        run_reset
+    else
+        run_undo "${UNDO_SELECT:-false}" "false"
+    fi
     exit 0
 fi
 
@@ -340,7 +348,8 @@ if [[ -n "$RUN_COMMAND" ]]; then
     fi
     ensure_gum
     case "$RUN_COMMAND" in
-        revert_setup) run_undo "false" ;;
+        revert_setup) run_undo "false" "false" ;;
+        run_reset) run_reset ;;
         symlink_dotfile|unlink_dotfile) "$RUN_COMMAND" "${RUN_COMMAND_ARGS[@]:-}" ;;
         *) "$RUN_COMMAND" ;;
     esac

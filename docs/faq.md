@@ -6,7 +6,14 @@ No. It is a general **brew-first** machine setup tool. The default path installs
 
 ## Will dry-run change my machine?
 
-No. `-n` / confirm **Preview plan (dry-run)** installs nothing and does not create `~/.dotfiles-setup` or rewrite shell configs.
+No. `-n` / confirm **Preview plan (dry-run)** installs nothing and does not create `~/.dotfiles-setup`, rewrite shell configs, or download gum. A curl dry-run may briefly clone into a temp directory and then delete it.
+
+## How do I reverse everything?
+
+```bash
+./.scripts/setup.sh --undo    # reverse logged packages + configs
+./.scripts/setup.sh --reset   # undo + remove ~/.dotfiles-setup
+```
 
 ## What if a package is already installed?
 

@@ -75,27 +75,43 @@ rm -rf "$TMPHOME"
 
 echo "Smoke: dry-run creates no ~/.dotfiles-setup..."
 TMPHOME="$(mktemp -d)"
+BEFORE="$(find "$TMPHOME" | wc -l | tr -d ' ')"
 if ! HOME="$TMPHOME" bash "$ROOT/.scripts/setup.sh" -y -n --bash >/tmp/dotfiles-dry-run.out 2>&1; then
     echo "dry-run setup failed:" >&2
     cat /tmp/dotfiles-dry-run.out >&2
     rm -rf "$TMPHOME"
     exit 1
 fi
-if [[ -e "$TMPHOME/.dotfiles-setup" ]]; then
-    echo "dry-run created ~/.dotfiles-setup - must create nothing" >&2
-    find "$TMPHOME" -maxdepth 3 -print >&2
+AFTER="$(find "$TMPHOME" | wc -l | tr -d ' ')"
+if [[ "$AFTER" != "$BEFORE" ]]; then
+    echo "dry-run created files under HOME (before=$BEFORE after=$AFTER):" >&2
+    find "$TMPHOME" -print >&2
     rm -rf "$TMPHOME"
     exit 1
 fi
-if [[ -e "$TMPHOME/.zshrc" || -e "$TMPHOME/.zshenv" || -e "$TMPHOME/.config/starship.toml" ]]; then
-    echo "dry-run wrote shell configs - must create nothing" >&2
-    find "$TMPHOME" -maxdepth 3 -print >&2
+if [[ -e "$TMPHOME/.dotfiles-setup" || -e "$TMPHOME/.zshrc" || -e "$TMPHOME/.local" ]]; then
+    echo "dry-run left setup artifacts" >&2
+    find "$TMPHOME" -print >&2
     rm -rf "$TMPHOME"
     exit 1
 fi
 grep -q 'Dry run complete\|No changes were made\|DRY RUN' /tmp/dotfiles-dry-run.out \
     || { echo "dry-run output missing completion marker:" >&2; cat /tmp/dotfiles-dry-run.out >&2; rm -rf "$TMPHOME"; exit 1; }
-echo "OK - dry-run left HOME empty of setup artifacts"
+echo "OK - dry-run left HOME completely untouched"
+rm -rf "$TMPHOME"
+
+echo "Smoke: undo --help / dry-run undo with empty log..."
+TMPHOME="$(mktemp -d)"
+HOME="$TMPHOME" bash "$ROOT/.scripts/setup.sh" --undo -n --bash >/tmp/dotfiles-undo.out 2>&1 || true
+grep -qi 'nothing to undo\|empty\|install log' /tmp/dotfiles-undo.out \
+    || { echo "undo empty-log message missing:" >&2; cat /tmp/dotfiles-undo.out >&2; rm -rf "$TMPHOME"; exit 1; }
+# undo dry-run must not create state either
+if [[ -e "$TMPHOME/.dotfiles-setup" ]]; then
+    echo "undo -n created ~/.dotfiles-setup" >&2
+    rm -rf "$TMPHOME"
+    exit 1
+fi
+echo "OK - undo dry-run with empty log"
 rm -rf "$TMPHOME"
 
 echo "Smoke: validate-profiles..."

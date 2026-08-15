@@ -50,7 +50,7 @@ _generate_write_file() {
     printf '%s\n' "$content" > "$target"
     if declare -f state_log_install >/dev/null 2>&1; then
         state_log_install "gen-$(basename "$target")" "$name" "config" \
-            "write $target" "$target" "$backup" "" "" ""
+            "write $target" "$target" "" "" "" "$backup"
     fi
     if declare -f report_config >/dev/null 2>&1; then
         report_config "Generated $target"
@@ -79,7 +79,7 @@ _generate_copy_template() {
     cp "$src" "$dest"
     if declare -f state_log_install >/dev/null 2>&1; then
         state_log_install "gen-$(basename "$dest")" "$name" "config" \
-            "cp $src $dest" "$dest" "$backup" "" "" ""
+            "cp $src $dest" "$dest" "" "" "" "$backup"
     fi
     if declare -f report_config >/dev/null 2>&1; then
         report_config "Generated $dest"

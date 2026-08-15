@@ -103,9 +103,7 @@ _install_gum_via_brew() {
 }
 
 # Offer Homebrew + gum when missing so the rest of setup can use nicer prompts.
-# Uses plain read (gum isn't available yet). -y skips the offer.
-# During dry-run: never install Homebrew (it writes ~/.zprofile); only offer a
-# local gum download for better prompts.
+# Uses plain read (gum isn't available yet). -y and dry-run skip installs (zero writes).
 # Always returns 0 so setup can continue with basic prompts when declined/failed.
 ensure_gum() {
     if _gum_already_available; then
@@ -113,7 +111,8 @@ ensure_gum() {
         return 0
     fi
 
-    if [[ -n "${YES_MODE:-}" ]]; then
+    # Never install gum/Homebrew during dry-run or -y (dry-run must create zero files).
+    if dry_run_is_active 2>/dev/null || [[ -n "${YES_MODE:-}" ]]; then
         GUM_FALLBACK=1
         return 0
     fi
@@ -125,26 +124,6 @@ ensure_gum() {
 
     echo ""
     local answer
-    if dry_run_is_active 2>/dev/null; then
-        # Dry-run must not install Homebrew (installer + shellenv write ~/.zprofile)
-        echo -e "${Purple:-}gum${Off:-} is not installed. It provides a nicer interactive UI."
-        echo -e "${Purple:-}Download gum for better dry-run prompts? (Y/n): ${Off:-}"
-        read -r answer
-        if [[ -n "$answer" && "$answer" != [Yy]* ]]; then
-            echo -e "${Yellow:-}Using basic prompts.${Off:-}"
-            GUM_FALLBACK=1
-            return 0
-        fi
-        if _install_gum_from_github; then
-            unset GUM_FALLBACK 2>/dev/null || true
-            echo -e "${Green:-}✓ gum ready${Off:-}"
-            return 0
-        fi
-        echo -e "${Yellow:-}Could not download gum — using basic prompts.${Off:-}"
-        GUM_FALLBACK=1
-        return 0
-    fi
-
     if [[ "$brew_ready" -eq 1 ]]; then
         echo -e "${Purple:-}gum${Off:-} is not installed. It provides a nicer interactive UI for setup."
         echo -e "${Purple:-}Install gum with Homebrew for a better experience? (Y/n): ${Off:-}"
