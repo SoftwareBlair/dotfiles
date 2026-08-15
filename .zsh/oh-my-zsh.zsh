@@ -1,0 +1,20 @@
+# Oh My Zsh — only when enabled by setup features
+if [[ "${DOTFILES_ENABLE_OMZ:-0}" != "1" ]]; then
+  return 0
+fi
+
+export ZSH="${ZSH:-$HOME/.oh-my-zsh}"
+if [[ ! -d "$ZSH" ]]; then
+  return 0
+fi
+
+# When merged with Starship, disable OMZ theme (Starship owns the prompt)
+if [[ "${DOTFILES_ENABLE_STARSHIP:-0}" == "1" ]]; then
+  ZSH_THEME=""
+else
+  ZSH_THEME="${ZSH_THEME:-robbyrussell}"
+fi
+
+plugins="${plugins:-git}"
+# shellcheck disable=SC1091
+source "$ZSH/oh-my-zsh.sh"

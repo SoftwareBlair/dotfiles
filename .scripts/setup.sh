@@ -1,385 +1,360 @@
 #!/bin/bash
+# New machine setup - brew-first, bash + gum
+set -uo pipefail
 
-source ./helpers.sh
-source ../.zsh/colors.zsh
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/helpers.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/../.zsh/colors.zsh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/platform.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/dry-run.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/prompts.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/state.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/pkgmgr.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/catalog.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/installer.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/undo.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/profiles.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/presets.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/configure.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/generate.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/migrate.sh"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/lib/wizard-export.sh"
 
-install_xcode_command_line_tools() {
-    echo -e "${BackCyan}Checking for Xcode Command Line Tools...${Off}"
-    if xcode-select -p &>/dev/null; then
-        echo -e "${Cyan}Xcode Command Line Tools are already installed.${Off}"
-        
-        echo -e "${Purple}Do you want to check for software updates? (y/n): ${Off}"
-        read answer
-        if [[ $answer = [Yy]* ]]; then
-            softwareupdate -ia --verbose
-        else
-            echo -e "${Yellow}Skipping software updates.${Off}"
-        fi
-    else
-        echo -e "${Blue}Xcode Command Line Tools are not installed. Installing now...${Off}"
-        sudo xcode-select --install
-    fi
+DRY_RUN=""
+YES_MODE=""
+UNDO_MODE=""
+UNDO_SELECT=""
+RESET_MODE=""
+PKG_MGR_FLAG=""
+RUN_COMMAND=""
+FORCE_TUI=""
+FORCE_BASH=""
+PROFILE_FLAG=""
 
-    echo -e "\n"
+usage() {
+    local b="${BCyan:-}" d="${BrBlack:-}" o="${Off:-}"
+    local w="${BWhite:-}" g="${Green:-}"
+
+    echo ""
+    echo -e "${b}New machine setup${o}  ${d}macOS + Linux · Homebrew${o}"
+    echo -e "${d}────────────────────────────────────────${o}"
+    echo -e "  Interactive gum wizard: ensure brew → zsh + Starship → pick apps → install."
+    echo ""
+    echo -e "  ${w}Includes${o}"
+    echo -e "    ${d}shell${o}     ${HELP_INCLUDES_SHELL}"
+    echo -e "    ${d}editors${o}   ${HELP_INCLUDES_EDITORS}"
+    echo -e "    ${d}apps${o}      browsers, 1Password, chat, Docker, CLI tools (opt-in)"
+    echo ""
+    echo -e "  ${w}Usage${o}"
+    echo -e "    ${g}./setup.sh${o}                   Gum wizard (bash)"
+    echo -e "    ${g}./setup.sh -y${o}                Non-interactive (shell + default apps)"
+    echo -e "    ${g}./setup.sh -n${o}                Dry-run (plan only, zero file writes)"
+    echo -e "    ${g}./setup.sh -y -n${o}             Non-interactive dry-run"
+    echo -e "    ${g}./setup.sh --undo${o}            Reverse all logged installs/configs"
+    echo -e "    ${g}./setup.sh --undo -n${o}         Preview undo"
+    echo -e "    ${g}./setup.sh --undo --select${o}   Choose what to reverse"
+    echo -e "    ${g}./setup.sh --reset${o}           Full reverse + remove ~/.dotfiles-setup"
+    echo -e "    ${g}./setup.sh --tui${o}             Optional experimental Go TUI"
+    echo -e "    ${g}./setup.sh -c${o} ${d}<helper>${o}       export_wizard_catalog · ..."
+    echo ""
+    echo -e "  ${w}Defaults${o}"
+    echo -e "    ${d}pkgmgr${o}    Homebrew only (installed on Linux if missing)"
+    echo -e "    ${d}configs${o}   Generated into \$HOME (modular zsh + stock Starship)"
+    echo -e "    ${d}updates${o}   Prompt to upgrade when already installed & outdated"
+    echo ""
+    echo -e "  ${w}More${o}"
+    echo -e "    ${d}docs${o}      docs/ · README.md"
+    echo -e "    ${d}state${o}     ~/.dotfiles-setup/"
+    echo ""
 }
 
-# https://brew.sh
-install_homebrew() {
-    echo -e "${BackCyan}Checking for Homebrew...${Off}"
-    if command -v brew &>/dev/null; then
-        echo -e "${Cyan}Homebrew is already installed.${Off}"
-
-        echo -e "${Purple}Do you want to update Homebrew? (y/n): ${Off}"
-        read update_brew
-        if [[ $update_brew = [Yy]* ]]; then
-            echo -e "${Blue}Updating Homebrew...${Off}"
-            brew update
-            brew upgrade
-        else
-            echo -e "${Yellow}Skipping Homebrew update.${Off}"
-        fi
-    else
-        echo -e "${Blue}Homebrew is not installed. Installing now...${Off}"
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-        (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> ~/.zprofile
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-    fi
-
-    echo -e "\n"
-}
-
-configure_git() {
-    echo -e "${BackCyan}Git Configuration${Off}"
-    echo -e "${Purple}Do you want to set common git config values? (y/n): ${Off}"
-    read git_config
-    if [[ $git_config = [Yy]* ]]; then
-            if [ -f ~/.gitconfig ]; then
-                echo -e "${Cyan}Git config already exists.${Off}"
-
-                echo -e "${Purple}Do you want to overwrite your git config? (y/n): ${Off}"
-                read overwrite_git_config
-                if [[ $overwrite_git_config = [Yy]* ]]; then
-                    echo -e "${Blue}Overwriting git config...${Off}"
-                    rm ~/.gitconfig
-                    touch ~/.gitconfig
-                else
-                    echo -e "${Yellow}Skipping git config overwrite.${Off}"
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help) usage; exit 0 ;;
+            -y|--yes) YES_MODE=1; shift ;;
+            -n|--dry-run) DRY_RUN=1; shift ;;
+            --tui) FORCE_TUI=1; shift ;;
+            --bash) FORCE_BASH=1; shift ;;
+            --undo) UNDO_MODE=1; shift ;;
+            --reset) RESET_MODE=1; UNDO_MODE=1; shift ;;
+            --select) UNDO_SELECT=true; shift ;;
+            --profile)
+                PROFILE_FLAG="${2:-}"
+                if [[ -z "$PROFILE_FLAG" ]]; then
+                    echo "Missing value for --profile" >&2
+                    exit 1
                 fi
-            else
-                echo -e "${Blue}Creating git config...${Off}"
-                touch ~/.gitconfig
-            fi
-        read -p "Enter your name: " git_name
-        read -p "Enter your email: " git_email
-        read -p "Set VS Code as your preffered editor? (y/n): " git_editor
-        read -p "Set rebasing as default merge strategy? (y/n): " git_rebase
-
-        echo "Setting git config values..."
-        git config --global user.name "$git_name"
-        git config --global user.email "$git_email"
-        git config --global init.defaultBranch main
-        git config --global filter.lfs.clean "git-lfs clean -- %f"
-        git config --global filter.lfs.smudge "git-lfs smudge -- %f"
-        git config --global filter.lfs.process "git-lfs filter-process"
-        git config --global filter.lfs.required true
-        git config --global alias.hist "log --pretty=format:\"%h %ad | %s%d [%an]\" --graph --date=short"
-
-        if [[ $git_editor = [Yy]* ]]; then
-            if command -v code &>/dev/null; then
-                git config --global core.editor "code --wait"
-            else
-                echo -e "${Red}VS Code is not installed.${Off}"
-                echo -e "${Purple}Do you want to install VS Code? (y/n): ${Off}"
-                read install_vscode
-                if [[ $install_vscode = [Yy]* ]]; then
-                    echo -e "${Blue}Installing VS Code...${Off}"
-                    brew install --cask visual-studio-code
-                    git config --global core.editor "code --wait"
-                else
-                    echo -e "${Yellow}Skipping VS Code installation.${Off}"
+                shift 2
+                ;;
+            --pkgmgr)
+                PKG_MGR_FLAG="${2:-}"
+                if [[ -z "$PKG_MGR_FLAG" ]]; then
+                    echo "Missing value for --pkgmgr" >&2
+                    exit 1
                 fi
-            fi
-        fi
-
-        if [[ $git_rebase = [Yy]* ]]; then
-            git config --global pull.rebase true
-        fi
-    else
-        echo -e "${Yellow}Skipping git config.${Off}"
-    fi
-
-    echo -e "\n"
+                shift 2
+                ;;
+            -c)
+                RUN_COMMAND="${2:-}"
+                if [[ -z "$RUN_COMMAND" ]]; then
+                    echo "Missing value for -c" >&2
+                    exit 1
+                fi
+                shift 2
+                RUN_COMMAND_ARGS=("$@")
+                return 0
+                ;;
+            *)
+                echo "Unknown option: $1" >&2
+                usage
+                exit 1
+                ;;
+        esac
+    done
 }
 
-# https://www.nerdfonts.com
-install_hack_nerd_font() {
-    echo -e "${BackCyan}Checking for Hack Nerd Font...${Off}"
-    if [ -f ~/Library/Fonts/Hack\ Regular\ Nerd\ Font\ Complete.ttf ]; then
-        echo -e "${Cyan}Hack Nerd Font is already installed.${Off}"
-
-        echo -e "${Purple}Do you want to update Hack Nerd Font? (y/n): ${Off}"
-        read update_hack_nerd_font
-        if [[ $update_hack_nerd_font = [Yy]* ]]; then
-            echo -e "${Blue}Updating Hack Nerd Font...${Off}"
-            brew upgrade font-hack-nerd-font
-        else
-            echo -e "${Yellow}Skipping Hack Nerd Font update.${Off}"
-        fi
-    else
-        echo -e "${Blue}Hack Nerd Font is not installed. Installing now...${Off}"
-        brew install --cask font-hack-nerd-font
-    fi
-
-    echo -e "\n"
+# Brew-first: always Homebrew
+default_pkgmgr() {
+    echo "brew"
 }
 
-# https://starship.rs
-install_starship() {
-    echo -e "${BackCyan}Checking for Starship...${Off}"
-    if command -v starship &>/dev/null; then
-        echo -e "${Cyan}Starship is already installed.${Off}"
-
-        echo -e "${Purple}Do you want to update Starship? (y/n): ${Off}"
-        read update_starship
-        if [[ $update_starship = [Yy]* ]]; then
-            echo -e "${Blue}Updating Starship...${Off}"
-            brew upgrade starship
-        else
-            echo -e "${Yellow}Skipping Starship update.${Off}"
-        fi
-    else
-        echo -e "${Blue}Starship is not installed. Installing now...${Off}"
-        brew install starship
+pick_pkgmgr() {
+    if [[ -n "$PKG_MGR_FLAG" && "$PKG_MGR_FLAG" != "brew" ]]; then
+        prompt_warn "This wizard is brew-first; ignoring --pkgmgr $PKG_MGR_FLAG"
     fi
-
-    echo -e "\n"
+    PKG_MGR="brew"
 }
 
-# https://eza.rocks/
-install_eza() {
-    echo -e "${BackCyan}Checking for Eza...${Off}"
-    if command -v eza &>/dev/null; then
-        echo -e "${Cyan}Eza is already installed.${Off}"
+# Ensure git + curl exist (via brew)
+ensure_core_prereqs() {
+    local missing=()
+    command -v git >/dev/null 2>&1 || missing+=("git")
+    command -v curl >/dev/null 2>&1 || missing+=("curl")
+    [[ ${#missing[@]} -eq 0 ]] && return 0
 
-        echo -e "${Purple}Do you want to update Eza? (y/n): ${Off}"
-        read update_eza
-        if [[ $update_eza = [Yy]* ]]; then
-            echo -e "${Blue}Updating Eza...${Off}"
-            brew upgrade eza
-        else
-            echo -e "${Yellow}Skipping Eza update.${Off}"
-        fi
-    else
-        echo -e "${Blue}Eza is not installed. Installing now...${Off}"
-        brew install eza
+    prompt_warn "Missing required tools: ${missing[*]}"
+    local install=false
+    if [[ -n "${YES_MODE:-}" ]]; then
+        install=true
+    elif prompt_confirm "Install missing tools via brew?" "true"; then
+        install=true
+    fi
+    if [[ "$install" != "true" ]]; then
+        prompt_error "git and curl are required. Aborting."
+        return 1
     fi
 
-    echo -e "\n"
+    local pkg cmd
+    for pkg in "${missing[@]}"; do
+        cmd="brew install $pkg"
+        if dry_run_is_active; then
+            dry_run_add_step "Install $pkg" "$cmd" "" "" "false" ""
+            continue
+        fi
+        prompt_style "Installing $pkg..."
+        bash -c "$cmd" || {
+            prompt_error "Failed to install $pkg"
+            return 1
+        }
+    done
+    return 0
 }
 
-# https://www.warp.dev/
-install_warp() {
-    echo -e "${BackCyan}Checking for Warp...${Off}"
-    if command -v warp &>/dev/null; then
-        echo -e "${Cyan}Warp is already installed.${Off}"
+run_setup() {
+    # state_init is a no-op during dry-run (must not create ~/.dotfiles-setup).
+    state_init
+    load_setup_prefs
+    ensure_gum
 
-        echo -e "${Purple}Do you want to update Warp? (y/n): ${Off}"
-        read update_warp
-        if [[ $update_warp = [Yy]* ]]; then
-            echo -e "${Blue}Updating Warp...${Off}"
-            brew upgrade warp
-        else
-            echo -e "${Yellow}Skipping Warp update.${Off}"
-        fi
-    else
-        echo -e "${Blue}Warp is not installed. Installing now...${Off}"
-        brew install --cask warp
+    case "${PLATFORM:-}" in
+        macos|linux) ;;
+        *)
+            prompt_error "Unsupported platform: ${PLATFORM:-unknown} (need macOS or Linux)"
+            exit 1
+            ;;
+    esac
+
+    prompt_welcome "New machine setup" "$(platform_label)"
+    prompt_info "Tool root: $DOTFILES_DIR"
+    dry_run_is_active && prompt_info "Dry-run: same prompts as a real run; nothing will be installed or written (including ~/.dotfiles-setup)."
+
+    local count
+    count="$(state_log_count)"
+    if [[ "$count" -gt 0 && -z "${YES_MODE:-}" ]]; then
+        local resume
+        resume="$(prompt_choose_one "Previous setup found ($count actions). What next?" \
+            "Re-run new machine setup  [default]" \
+            "Undo previous setup" \
+            "Cancel")"
+        case "$resume" in
+            Undo*) run_undo "false"; exit 0 ;;
+            Cancel*) exit 0 ;;
+        esac
     fi
 
-    echo -e "\n"
-}
+    pick_pkgmgr
+    prompt_info "Package manager: brew (Homebrew)"
 
-# https://www.raycast.com/
-install_raycast() {
-    echo -e "${BackCyan}Checking for Raycast...${Off}"
-    if command -v raycast &>/dev/null; then
-        echo -e "${Cyan}Raycast is already installed.${Off}"
-
-        echo -e "${Purple}Do you want to update Raycast? (y/n): ${Off}"
-        read update_raycast
-        if [[ $update_raycast = [Yy]* ]]; then
-            echo -e "${Blue}Updating Raycast...${Off}"
-            brew upgrade raycast
-        else
-            echo -e "${Yellow}Skipping Raycast update.${Off}"
-        fi
-    else
-        echo -e "${Blue}Raycast is not installed. Installing now...${Off}"
-        brew install --cask raycast
+    if dry_run_is_active; then
+        dry_run_begin_plan
     fi
 
-    echo -e "\n"
-}
+    ensure_pkgmgr brew || exit 1
+    ensure_core_prereqs || exit 1
 
-symlink_dotfiles() {
-    echo -e "${BackCyan}Symlink Dotfile${Off}"
-    echo -e "${Blue}Symlinking dotfiles...${Off}"
-
-    if [[ -L $HOME/.zshrc ]]; then
-        echo -e "${Cyan}.zshrc is already symlinked.${Off}"
+    # Optional light migrate (unmanaged zshrc) - no profile step
+    if [[ -z "${YES_MODE:-}" ]]; then
+        pick_migrate
+        migrate_apply
     else
-        symlink_dotfile ".zshrc"
+        MIGRATE_ACTION="none"
     fi
 
-    if [[ -L $HOME/.config ]]; then
-        echo -e "${Cyan}.config is already symlinked.${Off}"
-    else
-        symlink_dotfile ".config"
+    THEME_STARSHIP="${THEME_STARSHIP:-stock}"
+    if [[ -n "${SETUP_THEMES:-}" ]]; then
+        local pair
+        for pair in $SETUP_THEMES; do
+            case "$pair" in
+                starship=*) THEME_STARSHIP="${pair#starship=}" ;;
+            esac
+        done
     fi
 
-    if [[ -L $HOME/.warp ]]; then
-        echo -e "${Cyan}.warp is already symlinked.${Off}"
-    else
-        symlink_dotfile ".warp"
-    fi
-
-    echo -e "\n"
-}
-
-install_zsh_plugins() {
-    # https://github.com/zsh-users/zsh-autosuggestions
-    echo -e "${BackCyan}Checking for zsh-autosuggestions...${Off}"
-    if [ -d $(brew --prefix)/share/zsh-autosuggestions ]; then
-        echo -e "${Cyan}zsh-autosuggestions is already installed.${Off}"
-
-        echo -e "${Purple}Do you want to update zsh-autosuggestions? (y/n): ${Off}"
-        read update_zsh_autosuggestions
-        if [[ $update_zsh_autosuggestions = [Yy]* ]]; then
-            echo -e "${Blue}Updating zsh-autosuggestions...${Off}"
-            brew upgrade zsh-autosuggestions
-        else
-            echo -e "${Yellow}Skipping zsh-autosuggestions update.${Off}"
-        fi
-    else
-        echo -e "${Blue}zsh-autosuggestions is not installed. Installing now...${Off}"
-        brew install zsh-autosuggestions
-    fi
-
-    # https://github.com/zsh-users/zsh-syntax-highlighting
-    echo -e "${BackCyan}Checking for zsh-syntax-highlighting...${Off}"
-    if [ -d $(brew --prefix)/share/zsh-syntax-highlighting ]; then
-        echo -e "${Cyan}zsh-syntax-highlighting is already installed.${Off}"
-
-        echo -e "${Purple}Do you want to update zsh-syntax-highlighting? (y/n): ${Off}"
-        read update_zsh_syntax_highlighting
-        if [[ $update_zsh_syntax_highlighting = [Yy]* ]]; then
-            echo -e "${Blue}Updating zsh-syntax-highlighting...${Off}"
-            brew upgrade zsh-syntax-highlighting
-        else
-            echo -e "${Yellow}Skipping zsh-syntax-highlighting update.${Off}"
-        fi
-    else
-        echo -e "${Blue}zsh-syntax-highlighting is not installed. Installing now...${Off}"
-        brew install zsh-syntax-highlighting
-    fi
-
-    # https://github.com/rupa/z
-    echo -e "${BackCyan}Checking for z...${Off}"
-    if [ -f $(brew --prefix)/etc/profile.d/z.sh ]; then
-        echo -e "${Cyan}z is already installed.${Off}"
-
-        echo -e "${Purple}Do you want to update z? (y/n): ${Off}"
-        read update_z
-        if [[ $update_z = [Yy]* ]]; then
-            echo -e "${Blue}Updating z...${Off}"
-            brew upgrade z
-        else
-            echo -e "${Yellow}Skipping z update.${Off}"
-        fi
-    else
-        echo -e "${Blue}z is not installed. Installing now...${Off}"
-        brew install z
-    fi
-}
-
-# https://github.com/nvm-sh/nvm
-install_nvm() {
-    echo -e "${BackCyan}Checking for NVM...${Off}"
-
-    if command -v nvm &>/dev/null; then
-        echo -e "${Cyan}NVM is already installed.${Off}"
-
-        echo -e "${Purple}Do you want to update NVM? (y/n): ${Off}"
-        read update_nvm
-        if [[ $update_nvm = [Yy]* ]]; then
-            echo -e "${Blue}Updating NVM...${Off}"
-            brew upgrade nvm
-        else
-            echo -e "${Yellow}Skipping NVM update.${Off}"
-        fi
-    else
-        echo -e "${Blue}NVM is not installed. Installing now...${Off}"
-        brew install nvm
-
-        if [ ! -d ~/.nvm ]; then
-            echo -e "${Blue}Creating .nvm directory...${Off}"
-            mkdir ~/.nvm
-        fi
-
-        source $(brew --prefix nvm)/nvm.sh
-
-        echo -e "${Blue}Installing Node LTS...${Off}"
-        nvm install --lts
-        nvm alias default lts/*
-    fi
-}
-
-# Main script execution
-
-# Run a single command with the -c flag ./setup.sh -c [command]
-if [[ $1 = "-c" ]]; then
-    $2
-    echo -e "\n"
-    echo -e "${BackCyan}Command complete!${Off}"
-    echo -e "\n"
-
-    source $HOME/dotfiles/.zshrc
-else
-    echo -e "${BrCyan} ___   _              _                     ___         _                            ${Off}"
-    echo -e "${BrCyan}(  _\`\( )_           ( )_ _                (  _\`\\      ( )_                       ${Off}"
-    echo -e "${BrCyan}| (_(_| ,_)  _ _ _ __| ,_(_) ___    __     | (_(_)_  __| ,_)_   _ _ _               ${Off}"
-    echo -e "${BrCyan}\`\\__ \\| |  /'_\` ( '__| | | /' _ \`\/'_ \`\\   \`\\__ \\ /'__\`| | ( ) ( ( '_\`\\ ${Off}"
-    echo -e "${BrCyan}( )_) | |_( (_| | |  | |_| | ( ) ( (_) |   ( )_) (  ___| |_| (_) | (_) ) _  _  _     ${Off}"
-    echo -e "${BrCyan}\`\\____\`\\__\`\\__,_(_)  \`\\__(_(_) (_\`\\__  |   \`\\____\`\\____\`\\__\`\\___/| ,__/'(_)(_)(_)${Off}"
-    echo -e "${BrCyan}                                 ( )_) |                         | |                 ${Off}"
-    echo -e "${BrCyan}                                  \\___/'                         (_)                ${Off}"
-    echo -e "\n"
-
-    # Check if dotfiles are already in home directory if not, tell user to move them before continuing and exit script
-    if [[ $DOTFILES_DIR != $HOME/dotfiles ]]; then
-        echo -e "${Red}Dotfiles are not in home directory.${Off}"
-        echo -e "${Purple}Please run ./setup.sh -c move_dotfiles before continuing${Off}"
+    if ! pick_my_setup; then
         exit 1
-    else
-        echo -e "${Cyan}Dotfiles are already in home directory.${Off}"
     fi
 
-    install_xcode_command_line_tools
-    install_homebrew
-    configure_git
-    install_hack_nerd_font
-    install_starship
-    install_eza
-    install_warp
-    install_raycast
-    symlink_dotfiles
-    install_zsh_plugins
-    install_nvm
+    echo ""
+    print_my_setup_summary
+    echo "  Configs: generate into \$HOME"
+    echo "  Starship theme: ${THEME_STARSHIP:-stock}"
+    [[ -n "${MIGRATE_ACTION:-}" && "$MIGRATE_ACTION" != "none" ]] && echo "  Migrate: $MIGRATE_ACTION"
+    dry_run_is_active && echo "  Mode: DRY RUN"
 
-    source $HOME/dotfiles/.zshrc
+    if [[ -z "${YES_MODE:-}" ]]; then
+        if dry_run_is_active; then
+            if ! prompt_confirm "Continue dry-run with this plan?" "true"; then
+                prompt_warn "Cancelled."
+                exit 0
+            fi
+        else
+            local next
+            next="$(prompt_choose_one "What next?" \
+                "Install now  [default]" \
+                "Preview plan (dry-run)" \
+                "Cancel")"
+            case "$next" in
+                Cancel*)
+                    prompt_warn "Cancelled."
+                    exit 0
+                    ;;
+                Preview*)
+                    DRY_RUN=1
+                    dry_run_begin_plan
+                    ;;
+            esac
+        fi
+    fi
 
-    echo -e "\n"
-    echo -e "${BackCyan}Setup complete!${Off}"
-    echo -e "\n"
+    INSTALL_REPORT_OK=()
+    INSTALL_REPORT_SKIP=()
+    INSTALL_REPORT_FAIL=()
+    INSTALL_REPORT_CONFIG=()
+
+    install_prerequisites
+    installer_run_selections
+    generate_configs
+    offer_secrets_zprofile
+    if [[ -n "${SELECTED_SHELL:-}" ]]; then
+        maybe_chsh "$SELECTED_SHELL"
+    fi
+
+    if dry_run_is_active; then
+        dry_run_print_plan "New machine setup plan"
+        prompt_info "Dry run complete - no changes made."
+        exit 0
+    fi
+
+    save_setup_prefs
+    print_final_report
+    prompt_welcome "Done" "Restart your terminal"
+}
+
+maybe_run_tui() {
+    # Only when explicitly requested - gum bash is the default path
+    [[ -n "${FORCE_TUI:-}" ]] || return 1
+    [[ -n "${FORCE_BASH:-}" || -n "${YES_MODE:-}" || -n "${UNDO_MODE:-}" || -n "${RUN_COMMAND:-}" ]] && return 1
+
+    local tui_dir="$SCRIPTS_DIR/tui"
+    local tui_bin=""
+    if [[ -x "$SCRIPTS_DIR/bin/dotfiles-setup" ]]; then
+        tui_bin="$SCRIPTS_DIR/bin/dotfiles-setup"
+    elif [[ -x "$tui_dir/dotfiles-setup" ]]; then
+        tui_bin="$tui_dir/dotfiles-setup"
+    elif command -v go >/dev/null 2>&1 && [[ -f "$tui_dir/go.mod" ]]; then
+        (cd "$tui_dir" && go build -o dotfiles-setup .) || return 1
+        tui_bin="$tui_dir/dotfiles-setup"
+    else
+        echo "TUI binary missing. Build with: (cd .scripts/tui && go build -o ../bin/dotfiles-setup .)" >&2
+        return 1
+    fi
+
+    local args=()
+    [[ -n "${DRY_RUN:-}" ]] && args+=(--dry-run)
+    [[ -n "${PKG_MGR_FLAG:-}" ]] && args+=(--pkgmgr "$PKG_MGR_FLAG")
+    [[ -n "${PROFILE_FLAG:-}" ]] && args+=(--profile "$PROFILE_FLAG")
+    exec "$tui_bin" "${args[@]}"
+}
+
+# --- main ---
+parse_args "$@"
+init_platform
+load_catalogs
+
+if [[ -n "$UNDO_MODE" ]]; then
+    ensure_gum
+    PKG_MGR="${PKG_MGR_FLAG:-brew}"
+    ensure_brew_shellenv || true
+    if [[ -n "$RESET_MODE" ]]; then
+        run_reset
+    else
+        run_undo "${UNDO_SELECT:-false}" "false"
+    fi
+    exit 0
 fi
+
+if [[ -n "$RUN_COMMAND" ]]; then
+    if [[ "$RUN_COMMAND" == "export_wizard_catalog" ]]; then
+        PKG_MGR="${PKG_MGR_FLAG:-brew}"
+        export_wizard_catalog
+        exit $?
+    fi
+    ensure_gum
+    case "$RUN_COMMAND" in
+        revert_setup) run_undo "false" "false" ;;
+        run_reset) run_reset ;;
+        symlink_dotfile|unlink_dotfile) "$RUN_COMMAND" "${RUN_COMMAND_ARGS[@]:-}" ;;
+        *) "$RUN_COMMAND" ;;
+    esac
+    prompt_success "Command complete!"
+    exit 0
+fi
+
+maybe_run_tui || run_setup

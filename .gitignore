@@ -8,3 +8,6 @@
 .config/zed/*
 !.config/zed/settings.json
 !.config/zed/themes/*
+
+.scripts/bin/
+.scripts/tui/dotfiles-setup

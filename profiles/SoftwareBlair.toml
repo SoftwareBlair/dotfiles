@@ -1,0 +1,21 @@
+# Community setup profile — filename must match the GitHub username.
+github = "SoftwareBlair"
+name = "Blair"
+description = "Warp · SFMono · Starship · eza · Cursor · Zed"
+
+packages_shell = [
+  "zsh",
+  "starship",
+  "eza",
+  "nvm",
+  "zsh_autosuggestions",
+  "zsh_syntax_highlighting",
+  "z",
+  "zsh_aliases",
+]
+packages_dev = ["cursor", "zed", "warp", "sfmono_nerd"]
+packages_macos = ["raycast"]
+packages_optional = ["vscode"]
+
+[themes]
+starship = "blair"

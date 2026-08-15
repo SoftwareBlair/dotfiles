@@ -1,0 +1,4 @@
+# Starship prompt
+if [[ "${DOTFILES_ENABLE_STARSHIP:-1}" == "1" ]] && command -v starship >/dev/null 2>&1; then
+  eval "$(starship init zsh)"
+fi
