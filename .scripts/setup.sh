@@ -1,5 +1,5 @@
 #!/bin/bash
-# New machine setup
+# New machine setup - brew-first, bash + gum
 set -uo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,37 +51,31 @@ usage() {
     local w="${BWhite:-}" g="${Green:-}"
 
     echo ""
-    echo -e "${b}New machine setup${o}  ${d}macOS + Linux${o}"
+    echo -e "${b}New machine setup${o}  ${d}macOS + Linux · Homebrew${o}"
     echo -e "${d}────────────────────────────────────────${o}"
-    echo -e "  Installs a selected stack (defaults from your usual setup), then links this repo’s configs."
+    echo -e "  Interactive gum wizard: ensure brew → zsh + Starship → pick apps → install."
     echo ""
     echo -e "  ${w}Includes${o}"
-    echo -e "    ${d}editors${o}   ${HELP_INCLUDES_EDITORS:-Cursor, Zed}"
-    echo -e "    ${d}terminal${o}  ${HELP_INCLUDES_TERMINAL:-Warp · SFMono · Starship · eza}"
-    echo -e "    ${d}shell${o}     ${HELP_INCLUDES_SHELL:-zsh + plugins · NVM}"
+    echo -e "    ${d}shell${o}     ${HELP_INCLUDES_SHELL}"
+    echo -e "    ${d}editors${o}   ${HELP_INCLUDES_EDITORS}"
+    echo -e "    ${d}apps${o}      browsers, 1Password, chat, Docker, CLI tools (opt-in)"
     echo ""
     echo -e "  ${w}Usage${o}"
-    echo -e "    ${g}./setup.sh${o}                   TUI wizard (falls back to bash prompts)"
-    echo -e "    ${g}./setup.sh --tui${o}             Force Go Bubble Tea TUI"
-    echo -e "    ${g}./setup.sh --bash${o}            Force classic bash prompts"
-    echo -e "    ${g}./setup.sh -y${o}                Non-interactive (full default stack)"
-    echo -e "    ${g}./setup.sh -n${o}                Dry-run (same prompts, no changes)"
+    echo -e "    ${g}./setup.sh${o}                   Gum wizard (bash)"
+    echo -e "    ${g}./setup.sh -y${o}                Non-interactive (shell + default apps)"
+    echo -e "    ${g}./setup.sh -n${o}                Dry-run (plan only, no writes)"
     echo -e "    ${g}./setup.sh -y -n${o}             Non-interactive dry-run"
     echo -e "    ${g}./setup.sh --undo${o}            Reverse logged actions"
     echo -e "    ${g}./setup.sh --undo -n${o}         Preview undo"
-    echo -e "    ${g}./setup.sh --undo --select${o}   Choose what to reverse"
-    echo -e "    ${g}./setup.sh --profile${o} ${d}<user>${o}  GitHub username profile (e.g. SoftwareBlair)"
-    echo -e "    ${g}./setup.sh --pkgmgr${o} ${d}<name>${o}   brew · apt · dnf · pacman"
-    echo -e "    ${g}./setup.sh -c${o} ${d}<helper>${o}       export_wizard_catalog · move_dotfiles · …"
+    echo -e "    ${g}./setup.sh --tui${o}             Optional experimental Go TUI (if binary built)"
+    echo -e "    ${g}./setup.sh -c${o} ${d}<helper>${o}       export_wizard_catalog · ..."
     echo ""
     echo -e "  ${w}Defaults${o}"
-    echo -e "    ${d}profile${o}   ${DEFAULT_PROFILE:-default} (see profiles/*.toml)"
-    echo -e "    ${d}pkgmgr${o}    Homebrew (system manager on Linux if brew missing)"
-    echo -e "    ${d}configs${o}   Generated into \$HOME (modular zsh + themes)"
-    echo -e "    ${d}updates${o}   Offer upgrade when already installed"
+    echo -e "    ${d}pkgmgr${o}    Homebrew only (installed on Linux if missing)"
+    echo -e "    ${d}configs${o}   Generated into \$HOME (modular zsh + stock Starship)"
+    echo -e "    ${d}updates${o}   Prompt to upgrade when already installed & outdated"
     echo ""
     echo -e "  ${w}More${o}"
-    echo -e "    ${d}profiles${o}  profiles/<GitHubUser>.toml — contribute your setup"
     echo -e "    ${d}docs${o}      docs/ · README.md"
     echo -e "    ${d}state${o}     ~/.dotfiles-setup/"
     echo ""
@@ -132,51 +126,19 @@ parse_args() {
     done
 }
 
-# Prefer brew when present; otherwise the native Linux manager
+# Brew-first: always Homebrew
 default_pkgmgr() {
-    if ensure_brew_shellenv 2>/dev/null || command -v brew &>/dev/null; then
-        echo "brew"
-        return
-    fi
-    if [[ "${PLATFORM:-}" == "linux" ]]; then
-        command -v apt-get &>/dev/null && { echo "apt"; return; }
-        command -v dnf &>/dev/null && { echo "dnf"; return; }
-        command -v pacman &>/dev/null && { echo "pacman"; return; }
-    fi
     echo "brew"
 }
 
 pick_pkgmgr() {
-    if [[ -n "$PKG_MGR_FLAG" ]]; then
-        PKG_MGR="$PKG_MGR_FLAG"
-        return 0
+    if [[ -n "$PKG_MGR_FLAG" && "$PKG_MGR_FLAG" != "brew" ]]; then
+        prompt_warn "This wizard is brew-first; ignoring --pkgmgr $PKG_MGR_FLAG"
     fi
-    load_setup_prefs
-    if [[ -n "${YES_MODE:-}" ]]; then
-        PKG_MGR="${PKG_MGR:-$(default_pkgmgr)}"
-        return 0
-    fi
-    local options=("Homebrew (brew)  [default]")
-    if [[ "$PLATFORM" == "linux" ]]; then
-        command -v apt-get &>/dev/null && options+=("apt — Debian/Ubuntu system packages")
-        command -v dnf &>/dev/null && options+=("dnf — Fedora/RHEL system packages")
-        command -v pacman &>/dev/null && options+=("pacman — Arch system packages")
-    fi
-    if [[ ${#options[@]} -eq 1 ]]; then
-        PKG_MGR="brew"
-        return 0
-    fi
-    local choice
-    choice="$(prompt_choose_one "Package manager" "${options[@]}")"
-    case "$choice" in
-        apt*) PKG_MGR="apt" ;;
-        dnf*) PKG_MGR="dnf" ;;
-        pacman*) PKG_MGR="pacman" ;;
-        *) PKG_MGR="brew" ;;
-    esac
+    PKG_MGR="brew"
 }
 
-# Ensure git + curl exist (offer install via PKG_MGR)
+# Ensure git + curl exist (via brew)
 ensure_core_prereqs() {
     local missing=()
     command -v git >/dev/null 2>&1 || missing+=("git")
@@ -187,7 +149,7 @@ ensure_core_prereqs() {
     local install=false
     if [[ -n "${YES_MODE:-}" ]]; then
         install=true
-    elif prompt_confirm "Install missing tools via ${PKG_MGR:-brew}?" "true"; then
+    elif prompt_confirm "Install missing tools via brew?" "true"; then
         install=true
     fi
     if [[ "$install" != "true" ]]; then
@@ -197,13 +159,7 @@ ensure_core_prereqs() {
 
     local pkg cmd
     for pkg in "${missing[@]}"; do
-        case "${PKG_MGR:-brew}" in
-            brew) cmd="brew install $pkg" ;;
-            apt) cmd="sudo apt-get install -y $pkg" ;;
-            dnf) cmd="sudo dnf install -y $pkg" ;;
-            pacman) cmd="sudo pacman -S --noconfirm $pkg" ;;
-            *) cmd="brew install $pkg" ;;
-        esac
+        cmd="brew install $pkg"
         if dry_run_is_active; then
             dry_run_add_step "Install $pkg" "$cmd" "" "" "false" ""
             continue
@@ -222,6 +178,14 @@ run_setup() {
     state_init
     load_setup_prefs
     ensure_gum
+
+    case "${PLATFORM:-}" in
+        macos|linux) ;;
+        *)
+            prompt_error "Unsupported platform: ${PLATFORM:-unknown} (need macOS or Linux)"
+            exit 1
+            ;;
+    esac
 
     prompt_welcome "New machine setup" "$(platform_label)"
     prompt_info "Tool root: $DOTFILES_DIR"
@@ -242,28 +206,25 @@ run_setup() {
     fi
 
     pick_pkgmgr
-    prompt_info "Package manager: $PKG_MGR"
+    prompt_info "Package manager: brew (Homebrew)"
 
     if dry_run_is_active; then
         dry_run_begin_plan
     fi
 
-    ensure_pkgmgr "$PKG_MGR"
+    ensure_pkgmgr brew || exit 1
     ensure_core_prereqs || exit 1
 
-    pick_migrate
-    migrate_apply
-
-    if ! pick_profile; then
-        exit 1
-    fi
-    if [[ -n "${PROFILE_DESCRIPTION:-}" ]]; then
-        prompt_info "Profile: $PROFILE_DESCRIPTION"
+    # Optional light migrate (unmanaged zshrc) - no profile step
+    if [[ -z "${YES_MODE:-}" ]]; then
+        pick_migrate
+        migrate_apply
+    else
+        MIGRATE_ACTION="none"
     fi
 
-    # Themes from env (TUI) override profile
+    THEME_STARSHIP="${THEME_STARSHIP:-stock}"
     if [[ -n "${SETUP_THEMES:-}" ]]; then
-        # format: starship=blair
         local pair
         for pair in $SETUP_THEMES; do
             case "$pair" in
@@ -278,33 +239,33 @@ run_setup() {
 
     echo ""
     print_my_setup_summary
-    echo "  Package manager: $PKG_MGR"
     echo "  Configs: generate into \$HOME"
     echo "  Starship theme: ${THEME_STARSHIP:-stock}"
     [[ -n "${MIGRATE_ACTION:-}" && "$MIGRATE_ACTION" != "none" ]] && echo "  Migrate: $MIGRATE_ACTION"
     dry_run_is_active && echo "  Mode: DRY RUN"
 
     if [[ -z "${YES_MODE:-}" ]]; then
-        local confirm_msg="Install packages and generate configs now?"
-        dry_run_is_active && confirm_msg="Continue dry-run with this plan?"
-        if ! prompt_confirm "$confirm_msg" "true"; then
-            if dry_run_is_active; then
+        if dry_run_is_active; then
+            if ! prompt_confirm "Continue dry-run with this plan?" "true"; then
                 prompt_warn "Cancelled."
                 exit 0
             fi
+        else
             local next
             next="$(prompt_choose_one "What next?" \
-                "Preview plan (dry-run)  [default]" \
+                "Install now  [default]" \
+                "Preview plan (dry-run)" \
                 "Cancel")"
-            if [[ "$next" == Cancel* ]]; then
-                prompt_warn "Cancelled."
-                exit 0
-            fi
-            DRY_RUN=1
-            dry_run_begin_plan
-            if [[ "$PKG_MGR" == "brew" ]] && ! ensure_brew_shellenv; then
-                ensure_pkgmgr "$PKG_MGR"
-            fi
+            case "$next" in
+                Cancel*)
+                    prompt_warn "Cancelled."
+                    exit 0
+                    ;;
+                Preview*)
+                    DRY_RUN=1
+                    dry_run_begin_plan
+                    ;;
+            esac
         fi
     fi
 
@@ -323,7 +284,7 @@ run_setup() {
 
     if dry_run_is_active; then
         dry_run_print_plan "New machine setup plan"
-        prompt_info "Dry run complete — no changes made."
+        prompt_info "Dry run complete - no changes made."
         exit 0
     fi
 
@@ -333,31 +294,22 @@ run_setup() {
 }
 
 maybe_run_tui() {
-    # Non-interactive / undo / -c / explicit --bash → stay in bash
+    # Only when explicitly requested - gum bash is the default path
+    [[ -n "${FORCE_TUI:-}" ]] || return 1
     [[ -n "${FORCE_BASH:-}" || -n "${YES_MODE:-}" || -n "${UNDO_MODE:-}" || -n "${RUN_COMMAND:-}" ]] && return 1
-    [[ -n "${DOTFILES_NO_TUI:-}" ]] && return 1
 
     local tui_dir="$SCRIPTS_DIR/tui"
     local tui_bin=""
-    # Prefer release/install.sh binary, then local build
     if [[ -x "$SCRIPTS_DIR/bin/dotfiles-setup" ]]; then
         tui_bin="$SCRIPTS_DIR/bin/dotfiles-setup"
     elif [[ -x "$tui_dir/dotfiles-setup" ]]; then
         tui_bin="$tui_dir/dotfiles-setup"
-    elif [[ -n "${FORCE_TUI:-}" ]] && command -v go >/dev/null 2>&1 && [[ -f "$tui_dir/go.mod" ]]; then
+    elif command -v go >/dev/null 2>&1 && [[ -f "$tui_dir/go.mod" ]]; then
         (cd "$tui_dir" && go build -o dotfiles-setup .) || return 1
         tui_bin="$tui_dir/dotfiles-setup"
     else
-        [[ -n "${FORCE_TUI:-}" ]] && echo "TUI binary missing. Install via install.sh or: (cd .scripts/tui && go build -o dotfiles-setup .)" >&2
+        echo "TUI binary missing. Build with: (cd .scripts/tui && go build -o ../bin/dotfiles-setup .)" >&2
         return 1
-    fi
-
-    # Prefer TUI when binary exists (or --tui), and stdin/stdout are TTYs
-    if [[ -z "${FORCE_TUI:-}" && ! ( -t 0 && -t 1 ) ]]; then
-        # Still allow when /dev/tty is available (curl|bash -c installers)
-        if [[ ! -r /dev/tty ]]; then
-            return 1
-        fi
     fi
 
     local args=()
@@ -374,26 +326,15 @@ load_catalogs
 
 if [[ -n "$UNDO_MODE" ]]; then
     ensure_gum
-    if [[ -n "$PKG_MGR_FLAG" ]]; then
-        PKG_MGR="$PKG_MGR_FLAG"
-    else
-        load_setup_prefs
-        PKG_MGR="${PKG_MGR:-$(default_pkgmgr)}"
-        ensure_brew_shellenv || true
-    fi
+    PKG_MGR="${PKG_MGR_FLAG:-brew}"
+    ensure_brew_shellenv || true
     run_undo "${UNDO_SELECT:-false}"
     exit 0
 fi
 
 if [[ -n "$RUN_COMMAND" ]]; then
-    # JSON export should stay quiet (no gum / success banner)
     if [[ "$RUN_COMMAND" == "export_wizard_catalog" ]]; then
-        if [[ -n "$PKG_MGR_FLAG" ]]; then
-            PKG_MGR="$PKG_MGR_FLAG"
-        else
-            PKG_MGR="$(default_pkgmgr)"
-        fi
-        # PROFILE_FLAG / SETUP_PROFILE / DOTFILES_PROFILE honored inside export
+        PKG_MGR="${PKG_MGR_FLAG:-brew}"
         export_wizard_catalog
         exit $?
     fi

@@ -69,11 +69,15 @@ export_wizard_catalog() {
             done
         done < <(profiles_meta_tsv)
 
-        # Active profile packages (top-level)
-        profile_load "$active_id" || return 1
-        local id name desc category group gen_only
-        for id in $(my_setup_ids); do
+        # Active / full brew-first catalog (shell + all picker apps)
+        profile_load "$active_id" || true
+        local id name desc category group gen_only is_def
+        local exported=" "
+        for id in $(shell_ids_available) $(app_ids_all); do
+            [[ "$exported" == *" $id "* ]] && continue
+            exported+=" $id "
             catalog_available "$id" || continue
+            [[ "$id" == "oh_my_zsh" ]] && continue
             name="$(catalog_get "$id" name)"
             desc="$(catalog_get "$id" description)"
             category="$(catalog_get "$id" category)"
@@ -81,22 +85,19 @@ export_wizard_catalog() {
             group="dev"
             case "$category" in
                 shells|shell-configs) group="shell" ;;
+                browsers) group="dev" ;;
+                cli-tools) group="dev" ;;
+                apps) group="dev" ;;
             esac
-            if [[ " $PROFILE_PACKAGES_SHELL " == *" $id "* ]]; then
-                group="shell"
-            elif [[ " $PROFILE_PACKAGES_DEV " == *" $id "* ]]; then
-                group="dev"
+            is_def=0
+            if catalog_is_default "$id" 2>/dev/null || [[ " $SHELL_IDS $APP_DEFAULT_IDS " == *" $id "* ]]; then
+                is_def=1
             fi
-            printf 'pkg\t%s\t%s\t%s\t%s\t1\t%s\t%s\n' \
-                "$id" "$name" "$desc" "$category" "$group" "${gen_only:-false}"
+            printf 'pkg\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+                "$id" "$name" "$desc" "$category" "$is_def" "$group" "${gen_only:-false}"
         done
 
         echo "pkgmgr_opt	brew	Homebrew (brew)	1"
-        if [[ "${PLATFORM:-}" == "linux" ]]; then
-            command -v apt-get &>/dev/null && echo "pkgmgr_opt	apt	apt — Debian/Ubuntu	0"
-            command -v dnf &>/dev/null && echo "pkgmgr_opt	dnf	dnf — Fedora/RHEL	0"
-            command -v pacman &>/dev/null && echo "pkgmgr_opt	pacman	pacman — Arch	0"
-        fi
         true
     } | python3 -c '
 import json, sys

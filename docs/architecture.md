@@ -1,47 +1,36 @@
 # Architecture
 
+## Primary path
+
 ```text
-┌─────────────────┐     catalog JSON      ┌──────────────────┐
-│  Go TUI         │ ←── export_wizard ─── │  bash setup.sh   │
-│  (Bubble Tea)   │                       │  + catalog       │
-│                 │ ── engine Run -y ───→ │  + generate.sh   │
-└─────────────────┘                       │  + migrate.sh    │
-                                          └──────────────────┘
-                                                    │
-                                                    ▼
-                                          ~/.zshrc + generated/
-                                          packages via brew/apt/…
+install.sh  →  clone repo  →  .scripts/setup.sh --bash
+                                 ↓
+                    gum wizard (brew-first)
+                                 ↓
+              shell stack → app picker → confirm
+                                 ↓
+         installer_offer_updates → brew install → generate_configs
 ```
 
-## Layers
-
-| Layer | Path | Role |
+| Piece | Path | Role |
 |-------|------|------|
-| TUI | `.scripts/tui/` | Wizard UX, previews, dry-run toggle |
-| Engine | `setup.sh` + `lib/` | Packages, migrate, generate, undo log |
-| Profiles | `profiles/*.toml` | Package lists + theme ids |
-| Templates | `templates/` | zsh modules + themes |
+| Bootstrap | `install.sh` | Clone + launch gum wizard |
+| Engine | `.scripts/setup.sh` | Orchestration |
+| Prompts | `.scripts/lib/prompts.sh` | gum (+ fallback) |
+| Catalog | `.scripts/catalog/*.sh` | Package recipes (prefer brew) |
+| Presets | `.scripts/lib/presets.sh` | Fixed shell IDs + app picker |
+| Installer | `.scripts/lib/installer.sh` | Install + update prompts |
+| Generator | `.scripts/lib/generate.sh` | Modular zsh into `$HOME` |
+| Dry-run | `.scripts/lib/dry-run.sh` | Plan builder (no writes) |
 
-## Module ↔ package map
+## Package manager
 
-| Selection id | Install? | Generated module |
-|--------------|----------|------------------|
-| `zsh` | yes | orchestrator only |
-| `starship` | yes | `starship.zsh` + theme toml |
-| `nvm` | yes | `nvm.zsh` |
-| `zsh_autosuggestions` | yes | `zsh_autosuggestions.zsh` |
-| `zsh_syntax_highlighting` | yes | `zsh_syntax_highlighting.zsh` |
-| `z` | yes | `z.zsh` |
-| `eza` | yes | `eza.zsh` (skipped if `zsh_aliases` also selected) |
-| `zsh_aliases` | no | `aliases.zsh` |
-| `oh_my_zsh` | yes | `oh-my-zsh.zsh` |
+**Homebrew only** on the main path. Linux installs brew if missing. apt/dnf recipes may still exist in the catalog for legacy/undo but are not offered in the wizard.
 
-## State
+## Shell modules
 
-`~/.dotfiles-setup/` holds `install-log.jsonl`, `setup.conf`, `shell-features.zsh` (`DOTFILES_SETUP_SCHEMA=2`), `generated/`, and backups.
+Selected shell ids map to `templates/zsh/modules/*.zsh.tmpl` → `~/.dotfiles-setup/generated/`. Starship theme from `templates/themes/stock/`.
 
-## Migrate signals
+## Optional Go TUI
 
-- Prior setup without schema v2  
-- `~/.zshrc` symlink into an old clone  
-- Unmanaged `~/.zshrc` without the generated marker  
+`.scripts/tui/` remains for experiments (`setup.sh --tui`). Not required for curl install.

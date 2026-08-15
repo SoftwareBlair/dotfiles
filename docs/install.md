@@ -1,14 +1,14 @@
 # Install
 
-Supported platforms: **macOS** and **Linux** (apt, dnf, pacman, or Homebrew).
+Supported platforms: **macOS** and **Linux**. Package manager: **Homebrew only** (installed automatically on Linux if missing).
 
 ## Prerequisites
 
 - A terminal
-- Network access to GitHub
-- The wizard can install **git** and **curl** if they are missing (you will be prompted)
+- Network access to GitHub / Homebrew
+- The wizard can install **git** and **curl** via brew if they are missing
 
-## Option A — curl one-liner
+## Curl one-liner
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
@@ -17,60 +17,40 @@ Supported platforms: **macOS** and **Linux** (apt, dnf, pacman, or Homebrew).
 This will:
 
 1. Clone or reuse the repo under `~/dotfiles` (override with `DOTFILES_DIR`)
-2. Download the `dotfiles-setup` binary from GitHub Releases into `.scripts/bin/` and `~/.local/bin/`
-3. Launch the setup wizard
-
-Ensure `~/.local/bin` is on your `PATH` if you want to re-run `dotfiles-setup` later:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
+2. Optionally try to download a Go TUI binary (not required - wizard uses **gum**)
+3. Launch the **bash + gum** setup wizard
 
 ### Useful flags
 
-Pass flags after `--` when using `bash -c`:
-
 ```bash
-/bin/bash -c "$(curl -fsSL …/install.sh)" -- -n
-/bin/bash -c "$(curl -fsSL …/install.sh)" -- --profile default
-/bin/bash -c "$(curl -fsSL …/install.sh)" -- --bash
+/bin/bash -c "$(curl -fsSL .../install.sh)" -- -n          # dry-run (no writes)
+/bin/bash -c "$(curl -fsSL .../install.sh)" -- -y          # non-interactive defaults
+/bin/bash -c "$(curl -fsSL .../install.sh)" -- -y -n       # non-interactive dry-run
 ```
 
-## Option B — Homebrew
+Environment: `DOTFILES_REPO`, `DOTFILES_REF`, `DOTFILES_DIR`, `DOTFILES_DRY_RUN`, `DOTFILES_YES`.
 
-After a `v*` release exists:
-
-```bash
-brew tap SoftwareBlair/dotfiles
-brew install dotfiles-setup
-dotfiles-setup
-```
-
-The formula lives in this repo at [`Formula/dotfiles-setup.rb`](../Formula/dotfiles-setup.rb). Maintainers bump `version` and `sha256` on each release (see [releasing](releasing.md)).
-
-From a local checkout (development):
+### Testing a branch before merge
 
 ```bash
-brew install --formula ./Formula/dotfiles-setup.rb
+DOTFILES_REF=cursor/cross-platform-setup-wizard-5b1c \
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/cursor/cross-platform-setup-wizard-5b1c/install.sh)" -- -n
 ```
 
-## Option C — clone and run
+## From a clone
 
 ```bash
-git clone https://github.com/SoftwareBlair/dotfiles.git
-cd dotfiles/.scripts
-./setup.sh --tui    # or --bash
+git clone https://github.com/SoftwareBlair/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+./.scripts/setup.sh
+./.scripts/setup.sh -n    # dry-run
 ```
 
-Build the TUI locally if no release binary is present:
+## Optional Go TUI
+
+The Bubble Tea TUI is **experimental** and not used by `install.sh` by default:
 
 ```bash
 cd .scripts/tui && go build -o ../bin/dotfiles-setup .
-```
-
-## Verify
-
-```bash
-dotfiles-setup --help   # if on PATH
-./.scripts/setup.sh -h
+../setup.sh --tui
 ```

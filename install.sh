@@ -1,22 +1,18 @@
 #!/usr/bin/env bash
-# One-liner bootstrap for SoftwareBlair/dotfiles
+# One-liner bootstrap for SoftwareBlair/dotfiles (brew-first gum wizard)
 #
-# Recommended (keeps your terminal stdin free for the wizard):
+# Recommended:
 #   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
 #
 # Or download then run:
-#   curl -fsSL …/install.sh -o /tmp/install-dotfiles.sh && bash /tmp/install-dotfiles.sh
+#   curl -fsSL .../install.sh -o /tmp/install-dotfiles.sh && bash /tmp/install-dotfiles.sh
 #
 # Env knobs (CLI flags below override when set):
 #   DOTFILES_REPO   GitHub owner/name          (default: SoftwareBlair/dotfiles)
 #   DOTFILES_REF    branch or tag              (default: main)
 #   DOTFILES_DIR    install location           (default: ~/dotfiles)
-#   DOTFILES_BASH=1 force classic bash prompts
 #   DOTFILES_DRY_RUN=1  pass -n to setup
 #   DOTFILES_YES=1      pass -y to setup
-#   DOTFILES_PKGMGR     pass --pkgmgr <name>
-#   DOTFILES_PROFILE    pass --profile <GitHubUser> (e.g. SoftwareBlair)
-#   DOTFILES_SKIP_TUI=1 skip downloading the TUI binary
 set -uo pipefail
 
 REPO="${DOTFILES_REPO:-SoftwareBlair/dotfiles}"
@@ -30,30 +26,25 @@ die()   { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 usage() {
     cat <<'EOF'
-Install the dotfiles-setup CLI and run the new-machine wizard.
+Install the repo and run the brew-first gum setup wizard.
 
 Usage:
   install.sh [options]
 
 Options:
   -h, --help         Show this help and exit
-  -n, --dry-run      Plan only (pass -n to setup)
-  -y, --yes          Non-interactive (profile defaults)
-  --bash             Force classic bash prompts (skip TUI)
-  --profile <id>     Profile id (default | SoftwareBlair | …)
-  --pkgmgr <name>    brew | apt | dnf | pacman
+  -n, --dry-run      Plan only (pass -n to setup) - writes nothing
+  -y, --yes          Non-interactive (shell + default apps)
 
 Environment:
-  DOTFILES_REPO, DOTFILES_REF, DOTFILES_DIR, DOTFILES_BASH,
-  DOTFILES_DRY_RUN, DOTFILES_YES, DOTFILES_PKGMGR, DOTFILES_PROFILE,
-  DOTFILES_SKIP_TUI
-
-Also available via Homebrew (see docs/install.md):
-  brew tap SoftwareBlair/dotfiles
-  brew install dotfiles-setup
+  DOTFILES_REPO, DOTFILES_REF, DOTFILES_DIR,
+  DOTFILES_DRY_RUN, DOTFILES_YES
 
 Recommended one-liner:
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
+
+Dry-run:
+  /bin/bash -c "$(curl -fsSL .../install.sh)" -- -n
 EOF
 }
 
@@ -91,19 +82,13 @@ parse_args() {
                 DOTFILES_YES=1
                 shift
                 ;;
-            --bash)
-                DOTFILES_BASH=1
-                shift
-                ;;
-            --profile)
-                [[ $# -ge 2 ]] || die "--profile requires a value"
-                DOTFILES_PROFILE="$2"
-                shift 2
-                ;;
-            --pkgmgr)
-                [[ $# -ge 2 ]] || die "--pkgmgr requires a value"
-                DOTFILES_PKGMGR="$2"
-                shift 2
+            --bash|--tui|--profile|--pkgmgr)
+                # Accepted for compatibility; brew-first gum path ignores TUI/profile/pkgmgr
+                if [[ "$1" == "--profile" || "$1" == "--pkgmgr" ]]; then
+                    shift 2 || shift
+                else
+                    shift
+                fi
                 ;;
             --)
                 shift
@@ -143,27 +128,24 @@ ensure_repo() {
     local tmp tarball
     tmp="$(mktemp -d)"
     tarball="${tmp}/dotfiles.tar.gz"
-    info "git not found — downloading tarball"
+    info "git not found - downloading tarball"
     curl -fsSL "https://github.com/${REPO}/archive/refs/heads/${REF}.tar.gz" -o "$tarball" \
         || curl -fsSL "https://github.com/${REPO}/archive/refs/tags/${REF}.tar.gz" -o "$tarball" \
         || die "failed to download repo archive for ref $REF"
     mkdir -p "$DEST"
     tar -xzf "$tarball" -C "$tmp"
-    # archive root is owner-repo-ref/
     local extracted
     extracted="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
     [[ -n "$extracted" ]] || die "unexpected archive layout"
-    # Move contents into DEST
     shopt -s dotglob
     mv "$extracted"/* "$DEST"/
     shopt -u dotglob
     rm -rf "$tmp"
 }
 
-# Download prebuilt TUI from GitHub Releases into .scripts/bin/ and ~/.local/bin/
+# Best-effort optional TUI binary (does not gate the gum wizard)
 maybe_download_tui() {
-    [[ -n "${DOTFILES_SKIP_TUI:-}" || -n "${DOTFILES_BASH:-}" ]] && return 0
-
+    [[ -n "${DOTFILES_SKIP_TUI:-}" ]] && return 0
     need_cmd curl
     local target asset url dest_dir dest path_bin
     target="$(detect_target)"
@@ -174,19 +156,15 @@ maybe_download_tui() {
     mkdir -p "$dest_dir" "${HOME}/.local/bin"
 
     url="https://github.com/${RELEASE_REPO}/releases/latest/download/${asset}"
-    info "Fetching TUI binary (${asset})"
-    if curl -fsSL "$url" -o "${dest}.tmp"; then
+    if curl -fsSL "$url" -o "${dest}.tmp" 2>/dev/null; then
         mv "${dest}.tmp" "$dest"
         chmod +x "$dest"
         cp "$dest" "$path_bin"
         chmod +x "$path_bin"
-        info "TUI ready → $dest"
-        info "Also installed → $path_bin (ensure ~/.local/bin is on PATH)"
+        info "Optional TUI binary → $path_bin (use setup.sh --tui)"
         return 0
     fi
-
-    rm -f "${dest}.tmp" "$dest"
-    warn "No prebuilt TUI for ${target} (or download failed) — using bash prompts"
+    rm -f "${dest}.tmp"
 }
 
 run_setup() {
@@ -194,21 +172,12 @@ run_setup() {
     [[ -x "$setup" || -f "$setup" ]] || die "setup.sh not found at $setup"
     chmod +x "$setup" 2>/dev/null || true
 
-    local args=()
-    if [[ -n "${DOTFILES_BASH:-}" || -n "${DOTFILES_SKIP_TUI:-}" ]]; then
-        args+=(--bash)
-    elif [[ -x "${DEST}/.scripts/bin/dotfiles-setup" || -x "${DEST}/.scripts/tui/dotfiles-setup" ]]; then
-        args+=(--tui)
-    else
-        args+=(--bash)
-    fi
+    # Always bash/gum wizard - TUI is opt-in via setup.sh --tui after install
+    local args=(--bash)
     [[ -n "${DOTFILES_DRY_RUN:-}" ]] && args+=(-n)
     [[ -n "${DOTFILES_YES:-}" ]] && args+=(-y)
-    [[ -n "${DOTFILES_PROFILE:-}" ]] && args+=(--profile "$DOTFILES_PROFILE")
-    [[ -n "${DOTFILES_PKGMGR:-}" ]] && args+=(--pkgmgr "$DOTFILES_PKGMGR")
 
     info "Starting setup: $setup ${args[*]}"
-    # Prefer /dev/tty so piped installers still get interactive input
     if [[ -r /dev/tty ]]; then
         exec "$setup" "${args[@]}" </dev/tty
     fi
@@ -218,6 +187,10 @@ run_setup() {
 main() {
     parse_args "$@"
     need_cmd uname
+    case "$(uname -s)" in
+        Darwin|Linux) ;;
+        *) die "unsupported OS: $(uname -s) (need macOS or Linux)" ;;
+    esac
     ensure_repo
     maybe_download_tui
     run_setup

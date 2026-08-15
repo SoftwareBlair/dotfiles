@@ -1,41 +1,15 @@
 # Profiles
 
-Profiles are declarative TOML files under [`profiles/`](../profiles/). They define **package lists** and **themes** — not a full copy of someone’s `$HOME`.
+Community TOML profiles under [`profiles/`](../profiles/) remain available for contribution and tooling (`export_wizard_catalog`, validate), but the **main gum wizard does not require a profile step**.
 
-## Built-in: `default`
+Defaults live in [`.scripts/lib/presets.sh`](../.scripts/lib/presets.sh):
 
-Fresh install path. Minimal shell defaults (`zsh`, `starship`) and the **stock** Starship theme.
+- **Shell (fixed):** zsh, starship, autosuggestions, syntax highlighting, eza, z, aliases  
+- **Apps (picker):** editors, browsers, chat, CLI tools, etc.
 
-## Community profiles
+## Built-in TOML files
 
-Named after a GitHub username, e.g. [`SoftwareBlair.toml`](../profiles/SoftwareBlair.toml). The filename must match `github = "…"`.
+- `default.toml` - minimal reference  
+- `SoftwareBlair.toml` - example community package list  
 
-Choosing a profile **is** choosing its package set — the wizard does not ask you to pick packages again.
-
-Example fields:
-
-```toml
-github = "YourName"
-name = "Display name"
-description = "One-line summary"
-
-packages_shell = ["zsh", "starship", "zsh_aliases"]
-packages_dev = ["cursor", "zed"]
-packages_macos = ["raycast"]
-packages_optional = ["vscode"]
-
-[themes]
-starship = "stock"   # or a folder under templates/themes/
-```
-
-## Themes
-
-Starship themes live in `templates/themes/<id>/starship.toml`. Profiles reference them via `[themes] starship = "<id>"`.
-
-## Modules vs packages
-
-Some shell ids only **generate** config (`zsh_aliases`). Others install software and may also emit a module (`nvm`, `starship`, …). See [architecture](architecture.md).
-
-## Preview
-
-The TUI profile screen shows description, theme, shell items, and dev items for the highlighted profile.
+Choosing packages interactively is the supported UX; profiles are optional metadata for contributors.

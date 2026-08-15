@@ -1,47 +1,40 @@
 # dotfiles-setup
 
-Cross-platform **new machine setup** for macOS and Linux. A TUI wizard installs packages and **generates** modular shell configs into your home directory. Community **profiles** (including a built-in Default) share package lists and themes — this is a tool for everyone, not one person’s private dotfiles dump.
+Cross-platform **new machine setup** for macOS and Linux. A **gum** wizard installs a fixed **zsh + Starship** shell stack via **Homebrew**, then lets you select apps and tools.
 
 ## Quick start
 
 ```bash
-# curl (recommended one-liner)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)"
-
-# or Homebrew (after the first release is tagged)
-brew tap SoftwareBlair/dotfiles
-brew install dotfiles-setup
-dotfiles-setup
 ```
 
-Prefer a dry-run first:
+Prefer a dry-run first (writes nothing):
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/SoftwareBlair/dotfiles/main/install.sh)" -- -n
-# or
-dotfiles-setup --dry-run
+# or from a clone:
+./.scripts/setup.sh -n
 ```
 
 ## Documentation
 
 | Guide | Description |
 |-------|-------------|
-| [Install](docs/install.md) | curl, Homebrew, PATH, prerequisites |
-| [Usage](docs/usage.md) | TUI walkthrough, dry-run, flags, undo |
-| [Profiles](docs/profiles.md) | Default vs community profiles & themes |
-| [Contributing](docs/contributing.md) | Catalog recipes, modules, PRs, tests |
-| [Releasing](docs/releasing.md) | Tags, GitHub Actions, brew formula |
-| [Architecture](docs/architecture.md) | TUI ↔ bash engine ↔ generator |
+| [Install](docs/install.md) | curl bootstrap, PATH, prerequisites |
+| [Usage](docs/usage.md) | Wizard steps, dry-run, updates, flags |
+| [Profiles](docs/profiles.md) | Optional community TOML (not required for the main flow) |
+| [Contributing](docs/contributing.md) | Catalog recipes, modules, tests |
+| [Architecture](docs/architecture.md) | Engine overview |
 | [FAQ](docs/faq.md) | Common questions |
 
 ## What it does
 
-1. Detects OS (macOS / Linux) and package manager options  
-2. Ensures `git` and `curl`  
-3. Lets you pick a **profile** (Default or a community setup) with a live preview of its packages & themes  
-4. Confirms the plan (dry-run toggle) and installs + generates configs from that profile  
-
-Configs are written to `~/.zshrc`, `~/.zshenv`, `~/.config/starship.toml`, and `~/.dotfiles-setup/generated/` — only modules in the profile.
+1. Detects **macOS** or **Linux**  
+2. Ensures **Homebrew** (installs on Linux if missing)  
+3. Installs a fixed **shell** stack: zsh, Starship, autosuggestions, syntax highlighting, eza, z (no Oh My Zsh)  
+4. Lets you **select/deselect** apps (editors, browsers, chat, Docker, CLI languages, ...)  
+5. If something is already installed and outdated, **prompts to update**  
+6. Generates modular configs into `$HOME`  
 
 ## License
 

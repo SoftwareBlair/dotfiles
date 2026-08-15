@@ -1,29 +1,29 @@
 # FAQ
 
-## Is this just Blair’s personal dotfiles?
+## Is this only SoftwareBlair’s personal dotfiles?
 
-No. **dotfiles-setup** is a general setup tool. The **Default** profile is the common path. `SoftwareBlair` is one optional community profile (packages + themes), the same way anyone can contribute theirs.
+No. It is a general **brew-first** machine setup tool. The default path installs a shared zsh + Starship stack and optional apps.
 
-## Will it overwrite my `.zshrc`?
+## Will dry-run change my machine?
 
-Setup regenerates `~/.zshrc` / `~/.zshenv` and modules under `~/.dotfiles-setup/generated/`. Existing files are backed up first. Put personal customizations in **`~/.zshrc.local`** (never overwritten). Migration can also backup unmanaged configs.
+No. `-n` / confirm **Preview plan (dry-run)** installs nothing and does not create `~/.dotfiles-setup` or rewrite shell configs.
 
-## Why don’t I get every alias / plugin?
+## What if a package is already installed?
 
-Shell pieces are **opt-in**. Only selected modules are generated. Profiles pre-check defaults; you can clear them in the wizard.
+The wizard checks for updates and asks whether to upgrade. Decline to keep the current version. `-y` accepts updates automatically.
 
-## How do I migrate from an older clone of this repo?
+## Why Homebrew on Linux?
 
-Run the wizard; if old symlinks or prior state are detected, choose **Upgrade** or **Adopt**. Dry-run first with `-n`.
+One package manager across macOS and Linux keeps recipes consistent. The wizard installs Homebrew on Linux when it is missing.
 
-## Windows?
+## Where is Oh My Zsh?
 
-Not supported in this version (macOS and Linux only).
+Not part of this flow. The shell stack uses **Starship** instead.
+
+## What about the Go TUI?
+
+Optional/experimental. Build under `.scripts/tui` and run `./.scripts/setup.sh --tui`. Curl install uses gum.
 
 ## Where is state stored?
 
-`~/.dotfiles-setup/` — see [architecture](architecture.md).
-
-## How do I undo?
-
-`./.scripts/setup.sh --undo` (preview with `-n`).
+`~/.dotfiles-setup/` - install log, prefs, generated modules (created only on a real install).

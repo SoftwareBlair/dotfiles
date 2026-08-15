@@ -342,4 +342,10 @@ load_catalogs() {
     source "$catalog_dir/shells.sh"
     # shellcheck disable=SC1091
     source "$catalog_dir/shell-configs.sh"
+    # shellcheck disable=SC1091
+    source "$catalog_dir/browsers.sh"
+    # shellcheck disable=SC1091
+    source "$catalog_dir/cli-tools.sh"
+    # shellcheck disable=SC1091
+    source "$catalog_dir/apps.sh"
 }

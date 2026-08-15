@@ -3,78 +3,70 @@
 ## Start the wizard
 
 ```bash
-dotfiles-setup
-# or from a clone:
-./.scripts/setup.sh --tui
-./.scripts/setup.sh --bash   # classic prompts
+./.scripts/setup.sh
+# or after curl install:
+# (from ~/dotfiles)
+./.scripts/setup.sh
 ```
 
-## TUI flow
+Uses **gum** for prompts (offers to download gum if missing).
 
-1. **Prerequisites** — install git/curl if missing  
-2. **Package manager** — brew / apt / dnf / pacman  
-3. **Migrate** (if needed) — upgrade prior setup, adopt unmanaged configs, or skip  
-4. **Profile** — Default (fresh) or a community profile; preview shows packages & themes  
-5. **Confirm** — review the profile’s packages; press `n` to toggle **dry-run**  
-6. **Run** — install packages + generate configs  
+## Flow
 
-Choosing a profile selects its packages and modules — there is no separate package picker.
+1. **Platform** - macOS or Linux  
+2. **Homebrew** - install if missing (Linux included)  
+3. **Shell** - fixed stack: zsh, Starship, autosuggestions, syntax highlighting, eza, z (+ aliases module)  
+4. **Apps** - gum multi-select (pre-selects Cursor, Warp, NVM; opt-in for browsers, chat, CLI, ...)  
+5. **Confirm** - Install now, or **Preview plan (dry-run)**  
+6. **Updates** - for already-installed selections that are outdated, prompt before upgrading  
+7. **Install + generate** - brew install missing packages; write `~/.zshrc` / modules / starship  
 
-### Keys
+Oh My Zsh is **not** offered.
 
-| Screen | Keys |
-|--------|------|
-| Lists | ↑/↓, enter |
-| Confirm | enter run, `n` dry-run toggle, esc back |
-| Anywhere | `q` quit |
+## Dry-run
+
+True no-op: **no** brew installs, **no** config writes, **no** `~/.dotfiles-setup/`.
+
+```bash
+./.scripts/setup.sh -n
+./.scripts/setup.sh -y -n
+/bin/bash -c "$(curl -fsSL .../install.sh)" -- -n
+```
+
+Interactive: on confirm, choose **Preview plan (dry-run)**.
+
+## Updates
+
+After confirm, for each selected package that is already installed:
+
+- Up to date → skip with a message  
+- Outdated → listed, then prompt **Update these packages now?** (default yes; `-y` accepts)  
+- Declining keeps the current version  
+
+Dry-run records would-be upgrades in the printed plan only.
 
 ## Generated files
 
 | Path | Role |
 |------|------|
 | `~/.zshrc` / `~/.zshenv` | Orchestrators (regenerated) |
-| `~/.dotfiles-setup/generated/*.zsh` | Modules from the chosen profile |
-| `~/.config/starship.toml` | Theme from profile (if starship selected) |
-| `~/.dotfiles-setup/shell-features.zsh` | Feature flags (`DOTFILES_SETUP_SCHEMA=2`) |
-| `~/.zshrc.local` | **Your** overrides — never overwritten |
-| `~/.zprofile` | Secrets (optional prompt) |
+| `~/.dotfiles-setup/generated/*.zsh` | Modules from the shell stack |
+| `~/.config/starship.toml` | Stock Starship theme |
+| `~/.dotfiles-setup/shell-features.zsh` | Feature flags |
+| `~/.zshrc.local` | **Your** overrides - never overwritten |
 
-## Dry-run
+## Flags
 
-```bash
-dotfiles-setup --dry-run
-./.scripts/setup.sh -n --bash --profile default
-```
-
-Same prompts/plan; **no installs and no file writes** — including no `~/.dotfiles-setup/` directory.
-
-## Non-interactive
-
-```bash
-./.scripts/setup.sh -y --profile default --pkgmgr brew --bash
-./.scripts/setup.sh -y -n --profile SoftwareBlair --pkgmgr apt --bash
-```
-
-`-y` uses the profile’s default package set.
+| Flag | Meaning |
+|------|---------|
+| `-n` / `--dry-run` | Plan only |
+| `-y` / `--yes` | Non-interactive (shell + default apps; auto-accept updates) |
+| `--undo` | Reverse logged actions |
+| `--tui` | Optional experimental Go TUI |
 
 ## Undo
 
 ```bash
 ./.scripts/setup.sh --undo
 ./.scripts/setup.sh --undo -n
-./.scripts/setup.sh --undo --select
 ```
-
-Reverses actions in `~/.dotfiles-setup/install-log.jsonl` (including generated files when logged).
-
-## Flags (setup.sh)
-
-| Flag | Meaning |
-|------|---------|
-| `--tui` / `--bash` | Force UI |
-| `--profile <id>` | `default`, `SoftwareBlair`, … |
-| `--pkgmgr <name>` | brew \| apt \| dnf \| pacman |
-| `-y` | Non-interactive |
-| `-n` | Dry-run |
-| `--undo` | Reverse logged actions |
-| `-h` | Help |

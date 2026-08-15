@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for improving **dotfiles-setup** — a shared machine-setup tool.
+Thanks for improving **dotfiles-setup** - a shared machine-setup tool.
 
 ## Dev setup
 
@@ -37,7 +37,7 @@ Details: [profiles](profiles.md) and [`profiles/README.md`](../profiles/README.m
 
 ## Tests (required)
 
-- Go: `cd .scripts/tui && go test ./...` — wizard steps, UI keys, engine argv, catalog parse
+- Go: `cd .scripts/tui && go test ./...` - wizard steps, UI keys, engine argv, catalog parse
 - Smoke: `./.scripts/tui/test.sh` (includes catalog export)
 - Profiles: `./.scripts/validate-profiles.sh`
 
